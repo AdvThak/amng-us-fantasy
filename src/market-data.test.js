@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { crew, players, playerId, defaultRoster, spend, reconcileRoster } from './crew.js';
+import { crew, players, playerId, defaultRoster, spend, reconcileRoster, transferPlayer } from './crew.js';
 import { completeRosters, partialRosters, individualAppearanceEvidence, uncheckedEpisodes, priceRecommendations, vetoedIds } from './market-data.js';
 
 test('research prices and recent evidence match exactly twenty eligible players', () => {
@@ -34,7 +34,13 @@ test('vetoes retain historical identities but cannot be drafted or captain a sav
   }
   assert.equal(playerId('Chipfat'), 'guest-chip');
   assert.equal(playerId('VizuaLizah'), 'guest-viz');
-  assert.deepEqual(reconcileRoster({ids:['jj','ellum','simon','vik','ginge'],starters:['jj','ellum','simon','vik'],captain:'jj',vice:'ellum'}),{ids:['simon','vik'],starters:['simon','vik'],captain:'simon',vice:'vik'});
+  const repaired = reconcileRoster({ids:['jj','ellum','simon','vik','ginge'],starters:['jj','ellum','simon','vik'],captain:'jj',vice:'ellum'});
+  assert.equal(repaired.ids.length,8);
+  assert.equal(repaired.starters.length,5);
+  assert.ok(repaired.ids.every(id=>players.get(id).eligible));
+  assert.deepEqual(repaired.ids.slice(0,2),['simon','vik']);
+  assert.equal(repaired.captain,'simon');
+  assert.equal(repaired.vice,'vik');
 });
 test('new prices preserve budget and create premium versus depth choices', () => {
   assert.equal(defaultRoster.ids.length, 8);
@@ -47,5 +53,18 @@ test('new prices preserve budget and create premium versus depth choices', () =>
   const expensive = ranked.slice(0,8).map(p=>p.id);
   const repaired = reconcileRoster({ids:expensive,starters:expensive.slice(0,5),captain:expensive[0],vice:expensive[1]});
   assert.ok(spend(repaired.ids)<=100);
-  assert.ok(repaired.ids.length<8);
+  assert.equal(repaired.ids.length,8);
+  assert.equal(repaired.starters.length,5);
+});
+
+test('transfers keep eight players, five starters, budget and captaincy intact', () => {
+  const next = transferPlayer(defaultRoster,'simon','ethan');
+  assert.equal(next.ids.length,8);
+  assert.equal(next.starters.length,5);
+  assert.equal(next.captain,'ethan');
+  assert.ok(spend(next.ids)<=100);
+  assert.throws(()=>transferPlayer(defaultRoster,'guest-louu','lazar'), /budget/);
+  assert.throws(()=>transferPlayer(defaultRoster,'simon','jj'));
+  assert.throws(()=>transferPlayer(defaultRoster,'simon','vik'));
+  assert.deepEqual(reconcileRoster(next),next);
 });

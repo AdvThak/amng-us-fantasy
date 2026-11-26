@@ -1,6 +1,6 @@
 # Cosmic Draft · Sidemen Among Us fantasy
 
-Draft eight players for £100m and seat five starters around the Skeld cafeteria table. Select a suit to see each award, its CSV record and the round's video link. The opening practice episode is fictional. Draft prices use the research-recommended community skill–weighted price table and partially verified recent appearance evidence. Reviewed imports and squads are saved in the importing browser.
+Draft eight players for £100m and seat five starters around the Skeld cafeteria table. Select a suit to see each award, its CSV record and the round's video link. The default gameweek is the 21 November 2026 GTA 6 edition, with clearly labelled provisional secondary-source candidates only. The fictional practice episode is still selectable. Draft prices use the research-recommended community skill–weighted price table and partially verified recent appearance evidence. Reviewed imports and squads are saved in the importing browser.
 
 ## Run locally
 
@@ -26,7 +26,7 @@ Use these optional columns when the source supports the correction. Put full nam
 | Game Breakdowns | Actor Team / Target Team | The alignment at this action when a participant has changed role |
 | Game Breakdowns | Opponents | `true` or `false` for an otherwise ambiguous neutral pairing |
 
-A conflict at the same game and sequence prevents confirmation. A repeated identical record earns points once. Guests appear in results under their names. Only eligible, priced players can be drafted. KSI and Ellum are vetoed; both remain resolvable in historical scores. Existing squads are reconciled against new eligibility and prices on load, with vacancies left for the manager to refill. The Data Lab includes two fictional practice CSV downloads and accepts the earlier eight-column events under **Legacy event CSVs**. Legacy results retain the original event weights.
+A conflict at the same game and sequence prevents confirmation. A repeated identical record earns points once. Guests appear in results under their names. Only eligible, priced players can be drafted. KSI and Ellum are vetoed; both remain resolvable in historical scores. Every browser starts with the same editable eight-player £98m dummy squad. Saved squads are repaired to eight eligible players and five starters within £100m, retaining feasible selections. Transfers are one-for-one; captain and vice follow a transferred starting seat. The Data Lab includes two fictional practice CSV downloads and accepts the earlier eight-column events under **Legacy event CSVs**. Legacy results retain the original event weights.
 
 ## Gameweek scoring
 
@@ -44,7 +44,7 @@ For example, a crewmate who wins, reports twice and completes 7/7 tasks earns 9 
 
 A balance check on 100 archived rounds with only base roles gave 3.54 points per crewmate appearance and 3.50 per impostor appearance before episode and captain bonuses. Nineteen rounds had complete task counts. Neutral and Lovers weights are provisional. Career totals are a cross-check for the underlying records. Use the episode records to calculate weekly points. [Archived breakdowns](https://github.com/Kochou11/Sidemen-amongus/blob/374e004a03744731b62dc2d3b801486e0e0ebad3/Data/MoreSidemen_Among_Us.json) · [Kesh's tracker](https://docs.google.com/spreadsheets/d/1g3Esmr1-Z5jt5_mqOv9-f9fvyFezgT_2Z-8G7w5ChSU/edit) · [SDMN round index](https://www.sdmn-stats.uk/games)
 
-The repository ships original practice data. Check reuse permission before redistributing a community dataset. Local CSV confirmation records the importer's review. Shared standings, accounts and server-enforced deadlines are future work.
+The repository ships original practice data and three incomplete GTA 6 draft CSVs in `public/data/`. The provisional gameweek is separate from reviewed imports: no round result, win, task or missing action is assumed. Appearance and the reported Harry ejection are candidate points, not confirmed results. Importing the full reviewed episode supersedes the provisional option. Check reuse permission before redistributing a community dataset. Local CSV confirmation records the importer's review. Shared standings, accounts and server-enforced deadlines are future work.
 
 ## Cloudflare deployment
 

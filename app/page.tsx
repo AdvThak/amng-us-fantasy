@@ -8,9 +8,11 @@ import {
   players,
   reconcileRoster,
   spend,
+  transferPlayer,
   type Roster,
 } from '../src/crew.js';
 import { demoEpisode } from '../src/demo.js';
+import { provisionalId, provisionalLabel, provisionalResult } from '../src/provisional.js';
 import { lineupScore, rulebook, rules, scoreEpisode, type Episode } from '../src/gameweek.js';
 import { legacyResult, mergeLegacy } from '../src/legacy.js';
 import { weights as legacyWeights, type GameEvent } from '../src/scoring.js';
@@ -27,7 +29,7 @@ const sections = ['Lobby', 'My squad', 'Market', 'Data Lab'] as const;
 type Tab = (typeof sections)[number];
 type Popup = 'rules' | 'scores' | { player: string } | null;
 type Library = { episodes: Episode[]; current: string };
-const emptyLibrary: Library = { episodes: [], current: 'demo' };
+const emptyLibrary: Library = { episodes: [], current: 'provisional' };
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -48,7 +50,7 @@ function readLibrary(): Library {
   return Array.isArray(value.episodes) && typeof value.current === 'string' ? value : emptyLibrary;
 }
 function episodeLabel(id: string) {
-  return id === 'demo:skeld' ? 'Imported practice' : id;
+  return id === 'demo:skeld' ? 'Imported practice' : id === provisionalId ? 'GTA 6 edition · reviewed' : id;
 }
 
 export default function Home() {
@@ -60,14 +62,16 @@ export default function Home() {
     [ready, setReady] = useState(false);
   const [notice, setNotice] = useState(''),
     [query, setQuery] = useState(''),
+    [replaceId, setReplaceId] = useState(''),
     [sort, setSort] = useState<'points' | 'price'>('points');
   useEffect(() => {
     function restore() {
       const savedRoster = read(keys.roster, defaultRoster);
       const repaired = reconcileRoster(savedRoster);
       setRoster(repaired);
-      if (Array.isArray(savedRoster?.ids) && savedRoster.ids.some((id) => !repaired.ids.includes(id))) {
-        setNotice('Your squad was adjusted for the new market eligibility and £100m budget. Recruit replacements in Market.');
+      if (JSON.stringify(savedRoster) !== JSON.stringify(repaired)) {
+        try { write(keys.roster, repaired); } catch { /* Keep the repaired roster in memory. */ }
+        setNotice('Your squad was repaired to eight eligible players and five starters within £100m.');
       }
       const saved = read<GameEvent[]>(keys.events, []);
       const old = Array.isArray(saved)
@@ -107,8 +111,10 @@ export default function Home() {
 
   const weeks = useMemo(
     () => [
-      { key: 'demo', label: 'Practice episode' },
+      ...(library.episodes.some(e => e.id === provisionalId)
+        ? [] : [{ key: 'provisional', label: provisionalLabel }]),
       ...library.episodes.map((e) => ({ key: 'episode:' + e.id, label: episodeLabel(e.id) })),
+      { key: 'demo', label: 'Fictional practice episode' },
       ...[...new Set(legacy.map((e) => e.video))].map((id) => ({
         key: 'legacy:' + id,
         label: 'Legacy · ' + id,
@@ -118,12 +124,13 @@ export default function Home() {
   );
   const active = weeks.find((w) => w.key === library.current) ?? weeks[0];
   const oldMode = active.key.startsWith('legacy:');
+  const provisional = active.key === 'provisional';
   const episode = active.key.startsWith('episode:')
     ? (library.episodes.find((e) => 'episode:' + e.id === active.key) ?? demoEpisode)
     : demoEpisode;
   const result = useMemo(
-    () => (oldMode ? legacyResult(legacy, active.key.slice(7)) : scoreEpisode(episode)),
-    [oldMode, legacy, active.key, episode],
+    () => provisional ? provisionalResult() : oldMode ? legacyResult(legacy, active.key.slice(7)) : scoreEpisode(episode),
+    [provisional, oldMode, legacy, active.key, episode],
   );
   const points = (id: string) => result.totals[id] ?? 0;
   const name = (id: string) => players.get(id)?.name ?? result.names[id] ?? id;
@@ -134,7 +141,8 @@ export default function Home() {
   const available = 100 - spend(roster.ids),
     bench = roster.ids.filter((id) => !roster.starters.includes(id));
   const { total, skipper } = lineupScore(roster, result);
-  const demo = !oldMode && episode.id === demoEpisode.id;
+  const demo = !provisional && !oldMode && episode.id === demoEpisode.id;
+  const outgoing = roster.ids.includes(replaceId) ? replaceId : roster.ids[0];
   const market = crew
     .filter((p) => p.eligible && p.price !== null)
     .filter((p) => (p.name + ' ' + p.tag).toLowerCase().includes(query.trim().toLowerCase()))
@@ -168,42 +176,19 @@ export default function Home() {
     }
   }
   function recruit(id: string) {
-    if (roster.ids.includes(id)) {
-      saveRoster({ ...roster, ids: roster.ids.filter((x) => x !== id) });
-      return;
+    try {
+      saveRoster(transferPlayer(roster, outgoing, id));
+      setReplaceId(id);
+    } catch (e) {
+      setNotice((e as Error).message);
     }
-    if (!players.get(id)?.eligible) {
-      setNotice('This player is not available in the current draft market.');
-      return;
-    }
-    if (roster.ids.length >= 8) {
-      setNotice('Your eight seats are full. Remove a player to recruit another.');
-      return;
-    }
-    if ((players.get(id)?.price ?? Infinity) > available) {
-      setNotice('This player costs more than your remaining budget.');
-      return;
-    }
-    saveRoster({
-      ...roster,
-      ids: [...roster.ids, id],
-      starters: roster.starters.length < 5 ? [...roster.starters, id] : roster.starters,
-    });
   }
   function move(id: string) {
     const starting = roster.starters.includes(id);
-    if (!starting && roster.starters.length >= 5) {
-      setNotice('Bench one of your five starters to open a seat.');
-      return;
-    }
-    if (starting && roster.starters.length === 1) {
-      setNotice('Keep at least one starter in your lineup.');
-      return;
-    }
-    saveRoster({
-      ...roster,
-      starters: starting ? roster.starters.filter((x) => x !== id) : [...roster.starters, id],
-    });
+    const replacement = starting ? bench[0] : roster.starters[roster.starters.length - 1];
+    if (!replacement) return;
+    const starters = roster.starters.map(x => x === (starting ? id : replacement) ? (starting ? replacement : id) : x);
+    saveRoster({ ...roster, starters });
   }
   function assign(id: string, flag: 'captain' | 'vice') {
     if (flag === 'vice' && roster.starters.length < 2) {
@@ -272,7 +257,7 @@ export default function Home() {
             <button className="small-button" onClick={() => move(id)}>
               {starting ? 'Bench' : 'Start'}
             </button>
-            <button className="remove-btn" aria-label={'Remove ' + p.name} onClick={() => recruit(id)}>
+            <button className="remove-btn" aria-label={'Transfer out ' + p.name} onClick={() => { setReplaceId(id); go('Market'); }}>
               ×
             </button>
           </div>
@@ -306,7 +291,7 @@ export default function Home() {
   const description = {
     Lobby: 'Select a crewmate to inspect their points.',
     'My squad': 'Choose your five starters, captain and vice-captain.',
-    Market: 'Recruit up to eight players with a £100m draft budget.',
+    Market: 'Keep eight players within £100m using one-for-one transfers.',
     'Data Lab': 'Review episode records and keep the results on this browser.',
   }[tab];
   return (
@@ -363,6 +348,7 @@ export default function Home() {
             </select>
           </label>
         </div>
+        {provisional && <p className="feedback" role="note">Provisional GTA 6 recap only: no confirmed round results. Unreported players and actions are unknown, not zero performance. Squad and captain totals reflect candidates only. <a href="https://www.youtube.com/watch?v=vunYsm7gV9s" target="_blank" rel="noreferrer">Watch episode ↗</a></p>}
         {tab === 'Lobby' && (
           <>
             <div className="lobby-grid">
@@ -383,7 +369,7 @@ export default function Home() {
                   <small>pts</small>
                 </div>
                 <p className="score-caption">
-                  {demo
+                  {provisional ? 'Provisional candidate points' : demo
                     ? 'Fictional practice points'
                     : oldMode
                       ? 'Legacy event points'
@@ -416,7 +402,7 @@ export default function Home() {
             <div className="lobby-bottom">
               <section className="panel manifest">
                 <div className="panel-heading">
-                  <h2>Episode leaders</h2>
+                  <h2>{provisional ? 'Provisional candidates' : 'Episode leaders'}</h2>
                   <button className="link-button" onClick={() => setPopup('scores')}>
                     All scores →
                   </button>
@@ -489,7 +475,7 @@ export default function Home() {
               </section>
             </div>
             <p className="footnote">
-              C earns double points. V takes over if the captain misses the whole episode.
+              C earns double points. V takes over if the captain misses the whole episode. Starting a reserve swaps with the last starter; benching a starter swaps with the first reserve.
             </p>
           </>
         )}
@@ -512,8 +498,14 @@ export default function Home() {
                   <option value="price">Draft price</option>
                 </select>
               </label>
+              <label>
+                Transfer out
+                <select value={outgoing} onChange={(e) => setReplaceId(e.target.value)}>
+                  {roster.ids.map(id => <option key={id} value={id}>{name(id)} · {money(players.get(id)?.price ?? null)}</option>)}
+                </select>
+              </label>
               <span>
-                Budget left <b>{money(available)}</b>
+                Transfer budget <b>{money(available + (players.get(outgoing)?.price ?? 0))}</b>
               </span>
             </div>
             <table className="market-table">
@@ -539,15 +531,16 @@ export default function Home() {
                         </span>
                       </button>
                     </td>
-                    <td>{points(p.id)}</td>
+                    <td>{provisional && !result.appeared.has(p.id) ? '—' : points(p.id)}</td>
                     <td>{money(p.price)}</td>
                     <td>
                       <button
                         className={'small-button ' + (roster.ids.includes(p.id) ? '' : 'sign')}
-                        aria-label={(roster.ids.includes(p.id) ? 'Remove ' : 'Recruit ') + p.name}
+                        aria-label={(roster.ids.includes(p.id) ? 'Already in squad: ' : 'Transfer in ') + p.name}
+                        disabled={roster.ids.includes(p.id) || (p.price ?? Infinity) > available + (players.get(outgoing)?.price ?? 0)}
                         onClick={() => recruit(p.id)}
                       >
-                        {roster.ids.includes(p.id) ? 'Remove' : 'Recruit'}
+                        {roster.ids.includes(p.id) ? 'In squad' : 'Transfer in'}
                       </button>
                     </td>
                   </tr>

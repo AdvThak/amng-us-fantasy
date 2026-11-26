@@ -171,6 +171,13 @@ export function DataLab({ episodes, legacy, save, saveLegacy, open }: Props) {
             {message}
           </p>
         )}
+        <details className="lab-details" open>
+          <summary>GTA 6 edition — provisional CSVs</summary>
+          <p>Secondary recap only. These incomplete records cannot be confirmed until the complete game log is available.</p>
+          <a href="/data/sidemen-gta6-games-DRAFT.csv" download>Games CSV</a>{' · '}
+          <a href="/data/sidemen-gta6-breakdowns-DRAFT.csv" download>Game Breakdowns CSV</a>{' · '}
+          <a href="/data/sidemen-gta6-provisional-scores.csv" download>Candidate scores CSV</a>
+        </details>
         <details className="lab-details">
           <summary>Try the fictional practice files</summary>
           <p>Download both CSVs to try the review flow.</p>

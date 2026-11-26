@@ -42,6 +42,6 @@ The research recommends 45% community gameplay skill, 30% recent availability an
 | Louu | 7.0 | Unrated | low | high |
 | TheBurntPeanut | 6.5 | Unrated | low | very high |
 
-Eight-player budget £100m, five starters. Highest five cost £84m; cheapest three cost £21m, total £105m (ineligible). New default eight costs £98m. Existing squads retain valid selections in original order until budget is reached; ineligible players are removed and captaincy repaired. Vacancies are not silently auto-filled. This is a reviewable initial price schedule, not a calibrated predictive model. Future repricing should use verified round-level scores, recency-weighted skill consensus, and out-of-sample fantasy backtesting.
+Eight-player budget £100m, five starters. Highest five cost £84m; cheapest three cost £21m, total £105m (ineligible). New default eight costs £98m. Existing squads retain feasible eligible selections in original order, automatically fill remaining seats with affordable eligible players, and repair the starting five and captaincy. Transfers replace one player atomically. This is a reviewable initial price schedule, not a calibrated predictive model. Future repricing should use verified round-level scores, recency-weighted skill consensus, and out-of-sample fantasy backtesting.
 
 No external runtime API dependencies; no Gemini or YouTube Data API.

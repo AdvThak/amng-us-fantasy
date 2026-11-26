@@ -44,20 +44,39 @@ export const defaultRoster = {
 export const money = (n) => n === null ? 'Not draftable' : '£' + n.toFixed(1) + 'm';
 export const spend = (ids) => ids.reduce((sum, id) => sum + (players.get(id)?.price ?? 0), 0);
 
-/** Also repairs captaincy when an existing saved player is sold or benched. */
-/** @param {Roster} value @returns {Roster} */
+/** Preserve saved picks whenever a full, affordable squad can still be completed.
+ * @param {Roster} value @returns {Roster}
+ */
 export function reconcileRoster(value) {
-  if (!value || !Array.isArray(value.ids) || !Array.isArray(value.starters)) return defaultRoster;
+  if (!value || !Array.isArray(value.ids) || !Array.isArray(value.starters)) value = defaultRoster;
+  const candidates = crew.filter(p => p.eligible && p.price !== null)
+    .sort((a,b) => (a.price ?? Infinity) - (b.price ?? Infinity) || a.id.localeCompare(b.id));
   const ids = [];
+  const cheapest = (selected) => candidates.filter(p => !selected.includes(p.id))
+    .slice(0, 8 - selected.length).map(p => p.id);
   for (const id of value.ids) {
-    if (players.get(id)?.eligible && players.get(id)?.price != null && !ids.includes(id) && ids.length < 8 && spend([...ids, id]) <= 100)
-      ids.push(id);
+    if (!candidates.some(p => p.id === id) || ids.includes(id) || ids.length === 8) continue;
+    const next = [...ids, id];
+    const fill = cheapest(next);
+    if (next.length + fill.length === 8 && spend([...next, ...fill]) <= 100) ids.push(id);
   }
-  const starters = [...new Set(value.starters)].filter((id) => ids.includes(id)).slice(0, 5);
-  const captain = starters.includes(value.captain) ? value.captain : (starters[0] ?? '');
-  const vice =
-    starters.includes(value.vice) && value.vice !== captain
-      ? value.vice
-      : (starters.find((id) => id !== captain) ?? '');
+  ids.push(...cheapest(ids));
+  if (ids.length !== 8 || spend(ids) > 100) throw new Error('Market cannot supply eight affordable players.');
+  const starters = [...new Set(value.starters)].filter(id => ids.includes(id)).slice(0, 5);
+  starters.push(...ids.filter(id => !starters.includes(id)).slice(0, 5 - starters.length));
+  const captain = starters.includes(value.captain) ? value.captain : starters[0];
+  const vice = starters.includes(value.vice) && value.vice !== captain
+    ? value.vice : starters.find(id => id !== captain) ?? '';
   return { ids, starters, captain, vice };
+}
+
+/** @param {Roster} roster @param {string} outgoing @param {string} incoming @returns {Roster} */
+export function transferPlayer(roster, outgoing, incoming) {
+  const p = players.get(incoming);
+  if (!roster.ids.includes(outgoing) || roster.ids.includes(incoming) || !p?.eligible || p.price === null)
+    throw new Error('Choose an owned player and an eligible replacement.');
+  const swap = (id) => id === outgoing ? incoming : id;
+  const ids = roster.ids.map(swap);
+  if (ids.length !== 8 || spend(ids) > 100) throw new Error('Transfer exceeds your £100m budget.');
+  return { ids, starters: roster.starters.map(swap), captain: swap(roster.captain), vice: swap(roster.vice) };
 }
