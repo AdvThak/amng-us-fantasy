@@ -2,8 +2,9 @@
 const header = ['id', 'video', 'round', 'player', 'type', 'verified', 'timestampSeconds', 'note'];
 
 /** @param {string} text */
-export function parseCsv(text) {
-  /** @type {string[][]} */
+export function parseCsvRecords(text) {
+  let recordNumber = 1;
+  /** @type {{cells:string[],row:number}[]} */
   const rows = [];
   let cell = '';
   /** @type {string[]} */
@@ -19,14 +20,20 @@ export function parseCsv(text) {
     } else if ((ch === '\n' || ch === '\r') && !inside) {
       if (ch === '\r' && text[i + 1] === '\n') i++;
       row.push(cell);
-      if (row.some(v => v.trim())) rows.push(row);
+      if (row.some(v => v.trim())) rows.push({cells:row,row:recordNumber});
+      recordNumber++;
       row = []; cell = '';
     } else cell += ch;
   }
   if (inside) throw new Error('CSV has an unmatched quote');
   row.push(cell);
-  if (row.some(v => v.trim())) rows.push(row);
+  if (row.some(v => v.trim())) rows.push({cells:row,row:recordNumber});
   return rows;
+}
+
+/** @param {string} text */
+export function parseCsv(text) {
+  return parseCsvRecords(text).map(record => record.cells);
 }
 
 /** @param {string} text */

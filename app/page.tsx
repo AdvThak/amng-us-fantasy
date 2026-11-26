@@ -1,156 +1,634 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { score, weights } from '../src/scoring.js';
-import { importEventsCsv, exportEventsCsv } from '../src/import.js';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  crew,
+  defaultRoster,
+  money,
+  players,
+  reconcileRoster,
+  spend,
+  type Roster,
+} from '../src/crew.js';
+import { demoEpisode } from '../src/demo.js';
+import { lineupScore, rulebook, rules, scoreEpisode, type Episode } from '../src/gameweek.js';
+import { legacyResult, mergeLegacy } from '../src/legacy.js';
+import { weights as legacyWeights, type GameEvent } from '../src/scoring.js';
+import { replaceEpisode } from '../src/tracker.js';
+import { DataLab } from './DataLab';
+import { Dialog, Icon, PixelWord, PointsDialog, Room, Sprite } from './Pieces';
 
-type Player = { id: string; name: string; tag: string; colour: string; price: number; tier: string; points: number; initials: string };
-type Event = {id:string;video:string;round?:string;player:string;type:string;verified:boolean;timestampSeconds?:number;note?:string};
-type Tab = 'dashboard'|'team'|'market'|'lab';
-type RosterState = { ids: string[]; starters: string[]; captain: string; vice: string };
+const keys = {
+  roster: 'cosmic-draft-demo-v2',
+  events: 'cosmic-draft-events-v2',
+  weeks: 'cosmic-draft-gameweeks-v1',
+};
+const sections = ['Lobby', 'My squad', 'Market', 'Data Lab'] as const;
+type Tab = (typeof sections)[number];
+type Popup = 'rules' | 'scores' | { player: string } | null;
+type Library = { episodes: Episode[]; current: string };
+const emptyLibrary: Library = { episodes: [], current: 'demo' };
 
-// Fictional preview values; not scraped or claimed to be historical statistics.
-const PLAYERS:Player[] = [
-  {id:'simon',name:'Miniminter',tag:'SIMON',colour:'#98edc1',price:18.5,tier:'S',points:63,initials:'SM'},
-  {id:'vik',name:'Vikkstar123',tag:'VIK',colour:'#b69dff',price:16.5,tier:'S',points:58,initials:'VK'},
-  {id:'harry',name:'W2S',tag:'HARRY',colour:'#ffa67f',price:14.5,tier:'A',points:46,initials:'W2'},
-  {id:'josh',name:'Zerkaa',tag:'JOSH',colour:'#94caff',price:12.5,tier:'A',points:43,initials:'ZK'},
-  {id:'ethan',name:'Behzinga',tag:'ETHAN',colour:'#f0b9f6',price:11,tier:'B',points:35,initials:'BZ'},
-  {id:'jj',name:'KSI',tag:'JJ',colour:'#fde58d',price:10,tier:'B',points:30,initials:'KS'},
-  {id:'tobi',name:'TBJZL',tag:'TOBI',colour:'#83e4d3',price:8.5,tier:'C',points:27,initials:'TB'},
-  {id:'randolph',name:'Randolph',tag:'RANDY',colour:'#ff9cbb',price:7,tier:'C',points:25,initials:'RD'},
-  {id:'lazar',name:'LazarBeam',tag:'LAZAR',colour:'#a6baff',price:13,tier:'A',points:45,initials:'LZ'},
-  {id:'deji',name:'Deji',tag:'DEJI',colour:'#ffad83',price:8,tier:'C',points:25,initials:'DJ'},
-  {id:'ginge',name:'AngryGinge',tag:'GINGE',colour:'#ffc177',price:9,tier:'C',points:29,initials:'AG'},
-  {id:'ellum',name:'Ellum',tag:'ELLUM',colour:'#c6b6ff',price:6,tier:'D',points:19,initials:'EL'},
-];
-const DEFAULT_ROSTER:RosterState = {ids:['simon','vik','harry','josh','ethan','jj','tobi','randolph'],starters:['simon','vik','harry','josh','ethan'],captain:'simon',vice:'vik'};
-const KEY='cosmic-draft-demo-v2';
-const EVENT_KEY='cosmic-draft-events-v2';
-const FORMATTER = new Intl.NumberFormat('en-GB',{minimumFractionDigits:1,maximumFractionDigits:1});
-
-function PixelShip({size=60}:{size?:number}) {
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 56 56" shapeRendering="crispEdges"><rect x="24" y="2" width="8" height="8" fill="#e1ffcf"/><rect x="16" y="10" width="24" height="8" fill="#b4ffe5"/><rect x="12" y="18" width="32" height="8" fill="#73e8ca"/><rect x="8" y="26" width="40" height="8" fill="#6bb4ff"/><rect x="4" y="34" width="48" height="8" fill="#8468cd"/><rect x="12" y="42" width="8" height="8" fill="#f9a8b7"/><rect x="36" y="42" width="8" height="8" fill="#f9a8b7"/><rect x="24" y="18" width="8" height="8" fill="#11192e"/></svg>
+function read<T>(key: string, fallback: T): T {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
-function SpaceBadge({children,kind='mint'}:{children:React.ReactNode;kind?:'mint'|'amber'|'purple'}) {return <span className={`space-badge ${kind}`}>{children}</span>}
-function Avatar({player,large=false}:{player:Player;large?:boolean}) {return <span className={`avatar ${large?'large':''}`} style={{'--avatar-colour':player.colour} as React.CSSProperties}><span>{player.initials}</span><i/></span>}
-function Header({tab,setTab}:{tab:Tab;setTab:(tab:Tab)=>void}) {return <header className="topbar"><div className="brand"><span className="brand-icon"><PixelShip size={34}/></span><div className="brand-type"><strong>COSMIC<span> DRAFT</span></strong><small>SIDEMEN AMONG US FANTASY</small></div></div><div className="topbar-right"><span className="live-pill"><span className="signal"/> SEASON 01 <span className="live-muted">/ DEMO</span></span><button className="outline-btn head-btn" onClick={()=>setTab(tab==='lab'?'dashboard':'lab')}>{tab==='lab'?'← BACK TO DRAFT':'⚙ DATA LAB'}</button></div></header>}
+function write(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    throw new Error('Browser storage is unavailable or full. Your previous save is intact.');
+  }
+}
+function readLibrary(): Library {
+  const value = read(keys.weeks, emptyLibrary);
+  return Array.isArray(value.episodes) && typeof value.current === 'string' ? value : emptyLibrary;
+}
+function episodeLabel(id: string) {
+  return id === 'demo:skeld' ? 'Imported practice' : id;
+}
 
 export default function Home() {
-  const [tab,setTab]=useState<Tab>('dashboard');
-  const [roster,setRoster]=useState<RosterState>(DEFAULT_ROSTER);
-  const [events,setEvents]=useState<Event[]>([]);
-  const [ready,setReady]=useState(false);
-  const [query,setQuery]=useState('');
-  const [sort,setSort]=useState<'price'|'points'>('price');
-  const [notice,setNotice]=useState('');
-  const [form,setForm]=useState({video:'example-video-001',round:'1',player:'simon',type:'appearance',timestampSeconds:'',note:''});
-  const fileRef=useRef<HTMLInputElement>(null);
-
-  useEffect(()=>{
+  const [tab, setTab] = useState<Tab>('Lobby'),
+    [popup, setPopup] = useState<Popup>(null);
+  const [roster, setRoster] = useState<Roster>(defaultRoster),
+    [library, setLibrary] = useState<Library>(emptyLibrary);
+  const [legacy, setLegacy] = useState<GameEvent[]>([]),
+    [ready, setReady] = useState(false);
+  const [notice, setNotice] = useState(''),
+    [query, setQuery] = useState(''),
+    [sort, setSort] = useState<'points' | 'price'>('points');
+  useEffect(() => {
+    function restore() {
+      setRoster(reconcileRoster(read(keys.roster, defaultRoster)));
+      const saved = read<GameEvent[]>(keys.events, []);
+      const old = Array.isArray(saved)
+        ? saved.filter(
+            (e) =>
+              e &&
+              typeof e.id === 'string' &&
+              typeof e.video === 'string' &&
+              typeof e.player === 'string' &&
+              typeof e.type === 'string' &&
+              typeof e.verified === 'boolean',
+          )
+        : [];
+      setLegacy(old);
+      const data = readLibrary();
+      if (!localStorage.getItem(keys.weeks) && old.length)
+        setLibrary({ ...data, current: 'legacy:' + old[0].video });
+      else setLibrary(data);
+    }
     try {
-      const saved=localStorage.getItem(KEY);
-      if(saved){const parsed=JSON.parse(saved) as RosterState; if(Array.isArray(parsed.ids)&&Array.isArray(parsed.starters)&&typeof parsed.captain==='string'&&typeof parsed.vice==='string')setRoster(parsed)}
-      const savedEvents=localStorage.getItem(EVENT_KEY);
-      if(savedEvents&&Array.isArray(JSON.parse(savedEvents)))setEvents(JSON.parse(savedEvents));
-    }catch { /* Ignore corrupt demo state */ }
+      restore();
+    } catch {
+      setNotice('Local saves are unavailable in this browser.');
+    }
     setReady(true);
-  },[]);
-  useEffect(()=>{if(ready)localStorage.setItem(KEY,JSON.stringify(roster))},[roster,ready]);
-  useEffect(()=>{if(ready)localStorage.setItem(EVENT_KEY,JSON.stringify(events))},[events,ready]);
+    const sync = (e: StorageEvent) => {
+      if (!e.key || Object.values(keys).includes(e.key)) restore();
+    };
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, []);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(''), 5500);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
-  const owned=PLAYERS.filter(p=>roster.ids.includes(p.id));
-  const total=owned.reduce((s,p)=>s+p.price,0);
-  const remaining=100-total;
-  const picked=roster.starters.filter(id=>roster.ids.includes(id));
-  const bench=roster.ids.filter(id=>!picked.includes(id));
-  const viewPlayers=PLAYERS.filter(p=>(p.name+' '+p.tag).toLowerCase().includes(query.toLowerCase())).sort((a,b)=>sort==='price'?b.price-a.price:b.points-a.points);
-  const verifiedTotals=useMemo(()=>score(events),[events]);
-  const hasRealEvents=events.some(e=>e.verified);
-  const pointsFor=(p:Player)=>hasRealEvents?verifiedTotals[p.id]??0:p.points;
-  const currentPoints=picked.reduce((sum,id)=>{const p=PLAYERS.find(p=>p.id===id);if(!p)return sum;return sum+pointsFor(p)*(roster.captain===id?2:1)},0);
-  const notify=(s:string)=>setNotice(s);
+  const weeks = useMemo(
+    () => [
+      { key: 'demo', label: 'Practice episode' },
+      ...library.episodes.map((e) => ({ key: 'episode:' + e.id, label: episodeLabel(e.id) })),
+      ...[...new Set(legacy.map((e) => e.video))].map((id) => ({
+        key: 'legacy:' + id,
+        label: 'Legacy · ' + id,
+      })),
+    ],
+    [library.episodes, legacy],
+  );
+  const active = weeks.find((w) => w.key === library.current) ?? weeks[0];
+  const oldMode = active.key.startsWith('legacy:');
+  const episode = active.key.startsWith('episode:')
+    ? (library.episodes.find((e) => 'episode:' + e.id === active.key) ?? demoEpisode)
+    : demoEpisode;
+  const result = useMemo(
+    () => (oldMode ? legacyResult(legacy, active.key.slice(7)) : scoreEpisode(episode)),
+    [oldMode, legacy, active.key, episode],
+  );
+  const points = (id: string) => result.totals[id] ?? 0;
+  const name = (id: string) => players.get(id)?.name ?? result.names[id] ?? id;
+  const openPlayer = (id: string) => setPopup({ player: id });
+  const ranked = [...result.appeared].sort(
+    (a, b) => points(b) - points(a) || name(a).localeCompare(name(b)),
+  );
+  const available = 100 - spend(roster.ids),
+    bench = roster.ids.filter((id) => !roster.starters.includes(id));
+  const { total, skipper } = lineupScore(roster, result);
+  const demo = !oldMode && episode.id === demoEpisode.id;
+  const market = crew
+    .filter((p) => (p.name + ' ' + p.tag).toLowerCase().includes(query.trim().toLowerCase()))
+    .sort(
+      (a, b) =>
+        (sort === 'points' ? points(b.id) - points(a.id) : b.price - a.price) ||
+        a.name.localeCompare(b.name),
+    );
 
-  function togglePick(id:string) {
-    const p=PLAYERS.find(p=>p.id===id);if(!p)return;
-    if(roster.ids.includes(id)){
-      const ids=roster.ids.filter(x=>x!==id);
-      const starters=roster.starters.filter(x=>x!==id);
-      const captain=starters.includes(roster.captain)?roster.captain:(starters[0]??'');
-      const vice=starters.includes(roster.vice)&&roster.vice!==captain?roster.vice:(starters.find(x=>x!==captain)??'');
-      setRoster({ids,starters,captain,vice});
-      notify(`${p.name} removed from squad`);return;
+  function go(to: Tab) {
+    setTab(to);
+    setNotice('');
+    window.scrollTo({ top: 0 });
+  }
+  function choose(key: string) {
+    const next = { ...readLibrary(), current: key };
+    try {
+      write(keys.weeks, next);
+      setLibrary(next);
+    } catch (e) {
+      setNotice((e as Error).message);
     }
-    if(roster.ids.length>=8){notify('Squad is full — sell a player first');return;}
-    if(total+p.price>100.0001){notify('Not enough budget to sign this player');return;}
-    const starters=roster.starters.length<5?[...roster.starters,id]:roster.starters;
-    const captain=starters.includes(roster.captain)?roster.captain:(starters[0]??'');
-    const vice=starters.includes(roster.vice)&&roster.vice!==captain?roster.vice:(starters.find(x=>x!==captain)??'');
-    setRoster({...roster,ids:[...roster.ids,id],starters,captain,vice});
-    notify(`${p.name} added to your squad`);
   }
-  function toggleStarter(id:string){
-    if(!roster.ids.includes(id))return;
-    if(picked.includes(id)){
-      if(picked.length<=1){notify('Keep at least one starter');return;}
-      const starters=picked.filter(x=>x!==id);
-      const captain=starters.includes(roster.captain)?roster.captain:(starters[0]??'');
-      const vice=starters.includes(roster.vice)&&roster.vice!==captain?roster.vice:(starters.find(x=>x!==captain)??'');
-      setRoster({...roster,starters,captain,vice});
-    }else{
-      if(picked.length>=5){notify('Starting five full — bench a starter first');return;}
-      const starters=[...picked,id];
-      const captain=starters.includes(roster.captain)?roster.captain:starters[0];
-      const vice=starters.includes(roster.vice)&&roster.vice!==captain?roster.vice:(starters.find(x=>x!==captain)??'');
-      setRoster({...roster,starters,captain,vice});
+  function saveRoster(value: Roster) {
+    const next = reconcileRoster(value);
+    try {
+      write(keys.roster, next);
+      setRoster(next);
+    } catch (e) {
+      setNotice((e as Error).message);
     }
   }
-  function addEvent(){
-    if(!form.video.trim()||!form.player||!form.type){notify('Video, player and event type are required');return;}
-    const ts=form.timestampSeconds.trim()===''?undefined:Number(form.timestampSeconds);
-    if(ts!==undefined&&(!Number.isFinite(ts)||ts<0)){notify('Timestamp must be a positive number');return;}
-    const event:Event={id:`manual-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,video:form.video.trim(),round:form.round.trim()||undefined,player:form.player,type:form.type,verified:true,timestampSeconds:ts,note:form.note.trim()||undefined};
-    setEvents(old=>[...old,event]);notify('Verified event added');setForm(f=>({...f,note:'',timestampSeconds:''}));
+  function recruit(id: string) {
+    if (roster.ids.includes(id)) {
+      saveRoster({ ...roster, ids: roster.ids.filter((x) => x !== id) });
+      return;
+    }
+    if (roster.ids.length >= 8) {
+      setNotice('Your eight seats are full. Remove a player to recruit another.');
+      return;
+    }
+    if ((players.get(id)?.price ?? 0) > available) {
+      setNotice('This player costs more than your remaining budget.');
+      return;
+    }
+    saveRoster({
+      ...roster,
+      ids: [...roster.ids, id],
+      starters: roster.starters.length < 5 ? [...roster.starters, id] : roster.starters,
+    });
   }
-  async function handleFile(file?:File){
-    if(!file)return;
-    try{
-      const imported=importEventsCsv(await file.text()) as Event[];
-      for(const event of imported)if(!Object.hasOwn(weights,event.type))throw new Error(`Unknown event type: ${event.type}`);
-      setEvents(old=>{const map=new Map(old.map(e=>[e.id,e]));for(const e of imported)map.set(e.id,e);return [...map.values()]});
-      notify(`Imported ${imported.length} event rows`);
-    }catch(e){notify(e instanceof Error?e.message:'Invalid CSV file')}
-    if(fileRef.current)fileRef.current.value='';
+  function move(id: string) {
+    const starting = roster.starters.includes(id);
+    if (!starting && roster.starters.length >= 5) {
+      setNotice('Bench one of your five starters to open a seat.');
+      return;
+    }
+    if (starting && roster.starters.length === 1) {
+      setNotice('Keep at least one starter in your lineup.');
+      return;
+    }
+    saveRoster({
+      ...roster,
+      starters: starting ? roster.starters.filter((x) => x !== id) : [...roster.starters, id],
+    });
   }
-  function downloadCsv(){
-    const csv=exportEventsCsv(events);
-    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-    const anchor=document.createElement('a');anchor.href=url;anchor.download='cosmic-draft-events.csv';anchor.click();URL.revokeObjectURL(url);
+  function assign(id: string, flag: 'captain' | 'vice') {
+    if (flag === 'vice' && roster.starters.length < 2) {
+      setNotice('Pick a second starter to appoint a vice-captain.');
+      return;
+    }
+    if (flag === 'vice' && id === roster.captain)
+      saveRoster({ ...roster, captain: roster.vice, vice: id });
+    else if (flag === 'captain' && id === roster.vice)
+      saveRoster({ ...roster, captain: id, vice: roster.captain });
+    else saveRoster({ ...roster, [flag]: id });
   }
-
-  return <div className="universe"><div className="stars stars-one"/><div className="stars stars-two"/><div className="planet planet-a"/><div className="planet planet-b"/><div className="frame"><Header tab={tab} setTab={setTab}/>
-    <div className="navigation"><nav className="nav-tabs" aria-label="Sections">
-      {([['dashboard','⌂','MISSION CTRL'],['team','✦','MY SQUAD'],['market','◈','PLAYER MARKET'],['lab','▤','DATA LAB']] as const).map(([id,sym,label])=><button key={id} type="button" className={`nav-tab ${tab===id?'selected':''}`} onClick={()=>setTab(id)}><span>{sym}</span> {label}</button>)}
-    </nav><div className="demo-mark"><span className="pixel-diamond"/> UNVERIFIED DEMO DATA</div></div>
-    <main>
-      {tab==='dashboard'&&<>
-        <section className="hero"><div className="hero-main"><div className="eyebrow"><span className="eyebrow-line"/> YOUR INTERGALACTIC LEAGUE IS READY</div><h1>DRAFT YOUR <em>CREW.</em><br/>RULE THE <span>GALAXY.</span></h1><p>The social-deduction fantasy league. Pick your squad. Back your impostors. Climb the cosmic rankings.</p><div className="hero-actions"><button className="primary-btn" onClick={()=>setTab('team')}>BUILD MY SQUAD <span>↗</span></button><button className="ghost-btn" onClick={()=>setTab('market')}>EXPLORE PLAYERS <span>→</span></button></div></div><div className="hero-art" aria-hidden="true"><div className="orbit orbit-1"/><div className="orbit orbit-2"/><div className="moon-glow"/><div className="moon-disk"><span className="moon-crater crater-1"/><span className="moon-crater crater-2"/><span className="moon-crater crater-3"/><span className="moon-crater crater-4"/></div><div className="floating-ship"><PixelShip size={112}/></div><div className="star-ping s1">✦</div><div className="star-ping s2">✧</div><div className="star-ping s3">+</div><div className="art-tag">// NEW SEASON DETECTED</div></div></section>
-        <section className="stat-grid"><div className="stat-box"><div className="stat-heading">YOUR FANTASY SCORE <span>↗</span></div><div className="stat-number neon">{currentPoints}<small> PTS</small></div><div className="stat-sub">{hasRealEvents?'VERIFIED IMPORTED EVENT TOTAL':'FICTIONAL PREVIEW POINTS'}</div></div><div className="stat-box"><div className="stat-heading">SQUAD STATUS <span>◉</span></div><div className="stat-number">{roster.ids.length}<small> / 8</small></div><div className="stat-sub">CREW MEMBERS RECRUITED</div></div><div className="stat-box"><div className="stat-heading">BUDGET REMAINING <span>◎</span></div><div className="stat-number">£{FORMATTER.format(remaining)}<small>M</small></div><div className="stat-sub">FROM £100M STARTING BUDGET</div></div><div className="stat-box"><div className="stat-heading">CAPTAIN'S BRIDGE <span>♛</span></div><div className="stat-captain">{roster.captain?PLAYERS.find(p=>p.id===roster.captain)?.name:'NONE'}</div><div className="stat-sub">2× POINTS MULTIPLIER</div></div></section>
-        <div className="section-top"><div><div className="eyebrow">CREW INTEL / <span>SECTOR 07</span></div><h2>TOP OPERATIVES <small>✦</small></h2></div><button className="text-link" onClick={()=>setTab('market')}>VIEW ALL PLAYERS →</button></div>
-        <div className="featured-grid">{PLAYERS.slice(0,4).map((p,i)=><div className="operative-card" key={p.id}><div className="operative-top"><SpaceBadge kind={p.tier==='S'?'purple':'mint'}>TIER {p.tier}</SpaceBadge><span className="operative-rank">0{i+1}</span></div><div className="operative-center"><Avatar player={p} large/><div className="operative-name">{p.name}</div><div className="operative-tag">@{p.tag}</div></div><div className="operative-stats"><div><small>DEMO POINTS</small><b>{pointsFor(p)}</b></div><div><small>PRICE</small><b>£{FORMATTER.format(p.price)}m</b></div></div><button className={`card-action ${roster.ids.includes(p.id)?'held':''}`} onClick={()=>togglePick(p.id)}>{roster.ids.includes(p.id)?'✓ IN YOUR CREW':'+ RECRUIT PLAYER'}</button></div>)}</div>
-        <div className="bottom-note">⚠ PLAYER PRICES AND SCORES ARE FICTIONAL PLACEHOLDERS — NO HISTORICAL DATA HAS BEEN IMPORTED.</div>
-      </>}
-      {tab==='team'&&<>
-        <div className="page-heading"><div><div className="eyebrow">COMMAND DECK / <span>YOUR CREW</span></div><h1>MY <em>SQUAD.</em></h1><p>8 operatives. 5 starters. One mission to win it all.</p></div><button className="outline-btn" onClick={()=>setTab('market')}>+ PLAYER MARKET</button></div>
-        <div className="team-summary"><div><small>OPERATIVES</small><strong>{roster.ids.length}<span> / 8</span></strong></div><div><small>STARTING CREW</small><strong>{picked.length}<span> / 5</span></strong></div><div><small>BUDGET LEFT</small><strong>£{FORMATTER.format(remaining)}<span>M</span></strong></div><div><small>PREVIEW POINTS</small><strong>{currentPoints}<span> PTS</span></strong></div></div>
-        <div className="team-area"><div className="pitch-panel"><div className="panel-caption">ACTIVE MISSION CREW <span>05 SLOTS</span></div><div className="pitch-orbit"/><div className="lineup-grid">{Array.from({length:5},(_,i)=>{const p=PLAYERS.find(p=>p.id===picked[i]);return <div className="lineup-slot" key={i}>{p?<><div className="slot-avatar"><Avatar player={p}/>{roster.captain===p.id&&<span className="captain-flag">C</span>}{roster.vice===p.id&&roster.captain!==p.id&&<span className="captain-flag vc">VC</span>}</div><b>{p.name}</b><small>{pointsFor(p)} PTS</small><button className="slot-remove" onClick={()=>toggleStarter(p.id)}>BENCH ↓</button></>:<button className="empty-slot" onClick={()=>setTab('market')}>+<small>ADD PLAYER</small></button>}</div>})}</div><div className="pitch-stars">✦ &nbsp; · &nbsp; + &nbsp; · &nbsp; ✧ &nbsp; · &nbsp; + &nbsp; · &nbsp; ✦</div></div>
-        <div className="roster-panel"><div className="panel-caption">SQUAD CONTROLS <span>MANAGE</span></div><div className="roster-list">{owned.map(p=><div className="roster-row" key={p.id}><Avatar player={p}/><div className="roster-identity"><strong>{p.name}</strong><small>£{FORMATTER.format(p.price)}M · {picked.includes(p.id)?'STARTER':'BENCH'}</small></div><div className="roster-actions"><button className={roster.captain===p.id?'active-pill':''} disabled={!picked.includes(p.id)} title="Captain" onClick={()=>setRoster({...roster,captain:p.id,vice:roster.vice===p.id?(picked.find(x=>x!==p.id)??''):roster.vice})}>C</button><button className={roster.vice===p.id?'active-pill secondary-pill':''} disabled={!picked.includes(p.id)} title="Vice-captain" onClick={()=>setRoster({...roster,vice:p.id,captain:roster.captain===p.id?(picked.find(x=>x!==p.id)??''):roster.captain})}>V</button><button className="small-delete" title="Remove" onClick={()=>togglePick(p.id)}>×</button></div></div>)}</div><div className="bench-section"><div className="panel-caption">SUBSTITUTES <span>{bench.length} / 3</span></div><div className="bench-list">{bench.map(id=>{const p=PLAYERS.find(p=>p.id===id)!;return <button className="bench-chip" key={p.id} onClick={()=>toggleStarter(p.id)}>+ {p.name} <span>START ↑</span></button>})}{bench.length===0&&<span className="small-muted">No bench players selected</span>}</div></div></div></div>
-        <div className="bottom-note">DEMO ONLY: CAPTAIN AND VICE CAPTAIN MUST BE DIFFERENT STARTERS FOR A VALID GAMEWEEK. DEADLINES AND TRANSFERS ARE NOT IMPLEMENTED.</div>
-      </>}
-      {tab==='market'&&<><div className="page-heading"><div><div className="eyebrow">RECRUITMENT BAY / <span>PLAYER MARKET</span></div><h1>THE <em>MARKET.</em></h1><p>Recruit your crew without blowing your budget.</p></div><SpaceBadge kind="purple">£{FORMATTER.format(remaining)}M AVAILABLE</SpaceBadge></div><div className="market-tools"><label className="search-box">⌕ <input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="SEARCH OPERATIVES..."/></label><div className="market-sort"><button className={sort==='price'?'sort-active':''} onClick={()=>setSort('price')}>PRICE ↓</button><button className={sort==='points'?'sort-active':''} onClick={()=>setSort('points')}>POINTS ↓</button></div></div><div className="market-grid">{viewPlayers.map(p=><div key={p.id} className="market-row"><Avatar player={p}/><div className="market-identity"><strong>{p.name}</strong><small>{p.tag} / TIER {p.tier}</small></div><div className="market-score"><small>DEMO PTS</small><strong>{pointsFor(p)}</strong></div><div className="market-price"><small>PRICE</small><strong>£{FORMATTER.format(p.price)}M</strong></div><button className={`market-pick ${roster.ids.includes(p.id)?'picked':''}`} onClick={()=>togglePick(p.id)}>{roster.ids.includes(p.id)?'− REMOVE':'+ RECRUIT'}</button></div>)}</div><div className="bottom-note">ALL PRICES AND SCORES SHOWN ARE FICTIONAL PREVIEW VALUES.</div></>}
-      {tab==='lab'&&<><div className="page-heading"><div><div className="eyebrow">DATA SERVICES / <span>LOCAL PROTOTYPE</span></div><h1>DATA <em>LAB.</em></h1><p>Register gameplay facts manually. Verified events produce fantasy points.</p></div><SpaceBadge kind="amber">LOCAL DEMO · NO AUTH</SpaceBadge></div><div className="lab-grid"><div className="lab-panel"><div className="panel-caption">IMPORT GAMEPLAY EVENTS <span>CSV / MANUAL</span></div><p className="panel-lede">Import a CSV with stable IDs. Duplicates are updated instead of appended. Only verified rows score.</p><div className="lab-buttons"><input type="file" accept=".csv,text/csv" ref={fileRef} hidden onChange={e=>handleFile(e.target.files?.[0])}/><button className="primary-btn small-primary" onClick={()=>fileRef.current?.click()}>↑ IMPORT CSV</button><button className="outline-btn" onClick={downloadCsv}>↓ EXPORT CSV</button></div><div className="lab-label">ADD VERIFIED EVENT</div><label className="field-label">VIDEO IDENTIFIER<input value={form.video} onChange={e=>setForm(f=>({...f,video:e.target.value}))}/></label><div className="form-split"><label className="field-label">ROUND<input value={form.round} onChange={e=>setForm(f=>({...f,round:e.target.value}))}/></label><label className="field-label">TIMESTAMP (SEC)<input inputMode="numeric" value={form.timestampSeconds} onChange={e=>setForm(f=>({...f,timestampSeconds:e.target.value}))} placeholder="OPTIONAL"/></label></div><label className="field-label">PARTICIPANT<select value={form.player} onChange={e=>setForm(f=>({...f,player:e.target.value}))}>{PLAYERS.map(p=><option value={p.id} key={p.id}>{p.name}</option>)}</select></label><label className="field-label">SCORING EVENT<select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}>{Object.entries(weights).map(([key,points])=><option key={key} value={key}>{key.replaceAll('_',' ').toUpperCase()} ({points>0?'+':''}{points})</option>)}</select></label><label className="field-label">EVIDENCE / NOTES<input value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} placeholder="WHAT HAPPENED?"/></label><button className="primary-btn submit-event" onClick={addEvent}>✓ ADD VERIFIED EVENT</button></div>
-      <div className="lab-panel"><div className="panel-caption">EVENT LOG <span>{events.length} EVENTS</span></div><div className="lab-totals"><div><small>VERIFIED</small><b>{events.filter(e=>e.verified).length}</b></div><div><small>PENDING</small><b>{events.filter(e=>!e.verified).length}</b></div><div><small>PARTICIPANTS</small><b>{Object.keys(verifiedTotals).length}</b></div></div><div className="event-list">{[...events].reverse().slice(0,24).map(e=><div className="event-row" key={e.id}><div><strong>{e.type.replaceAll('_',' ').toUpperCase()}</strong><small>{PLAYERS.find(p=>p.id===e.player)?.name??e.player} · {e.video} / R{e.round??'?'}</small></div><div className="event-right"><span className={e.verified?'status-approved':'status-pending'}>{e.verified?'VERIFIED':'PENDING'}</span><button title="Delete local event" onClick={()=>setEvents(old=>old.filter(x=>x.id!==e.id))}>×</button></div></div>)}{events.length===0&&<div className="empty-events"><div>▤</div><strong>NO SIGNAL DETECTED</strong><p>Import a CSV or create a verified event to begin.</p></div>}</div>{events.length>0&&<button className="reset-events" onClick={()=>{if(window.confirm('Clear all local demo events?'))setEvents([])}}>CLEAR ALL LOCAL EVENTS</button>}</div></div><div className="bottom-note">THIS IS A CLIENT-SIDE TEST CONSOLE, NOT A SECURE ADMIN DASHBOARD. IT STORES NO VIDEO FILES AND CALLS NO VIDEO OR AI API.</div></>}
-    </main>
-    <footer><span>© COSMIC DRAFT / UNOFFICIAL FAN CONCEPT</span><span>MADE FOR THE CREW <span className="footer-spark">✦</span> <span className="footer-version">BUILD 0.2.0</span></span></footer>
-  </div>{notice&&<div className="toast" role="status"><span>✦</span> {notice}</div>}</div>
+  const rows = (ids: string[]) => (
+    <ol className="score-list">
+      {ids.map((id, i) => (
+        <li key={id}>
+          <button onClick={() => openPlayer(id)}>
+            <span className="rank">{String(i + 1).padStart(2, '0')}</span>
+            <Sprite id={id} />
+            <strong>{name(id)}</strong>
+            <span className="row-points">
+              {points(id)} <small>pts</small>
+            </span>
+            <span aria-hidden="true">›</span>
+          </button>
+        </li>
+      ))}
+    </ol>
+  );
+  const manageRows = (ids: string[]) =>
+    ids.map((id) => {
+      const p = players.get(id)!;
+      const starting = roster.starters.includes(id);
+      return (
+        <div className="manage-row" key={id}>
+          <button className="identity" onClick={() => openPlayer(id)}>
+            <Sprite id={id} />
+            <span>
+              <b>{p.name}</b>
+              <small>
+                {money(p.price)} · {points(id)} pts
+              </small>
+            </span>
+          </button>
+          <div className="row-controls">
+            {starting && (
+              <>
+                <button
+                  className="flag-btn"
+                  aria-label={'Make ' + p.name + ' captain'}
+                  aria-pressed={id === roster.captain}
+                  onClick={() => assign(id, 'captain')}
+                >
+                  C
+                </button>
+                <button
+                  className="flag-btn"
+                  aria-label={'Make ' + p.name + ' vice-captain'}
+                  aria-pressed={id === roster.vice}
+                  onClick={() => assign(id, 'vice')}
+                >
+                  V
+                </button>
+              </>
+            )}
+            <button className="small-button" onClick={() => move(id)}>
+              {starting ? 'Bench' : 'Start'}
+            </button>
+            <button className="remove-btn" aria-label={'Remove ' + p.name} onClick={() => recruit(id)}>
+              ×
+            </button>
+          </div>
+        </div>
+      );
+    });
+  const guide = oldMode
+    ? [
+        ['Match win', legacyWeights.match_win],
+        ['Impostor kill', legacyWeights.impostor_kill],
+        ['Correct crew vote', legacyWeights.crew_correct_vote],
+      ]
+    : [
+        ['Crewmate win', rules.crewWin],
+        ['Impostor win', rules.impWin],
+        ['Neutral or Lovers win', rules.neutralWin],
+      ];
+  const ruleRows = oldMode
+    ? Object.entries(legacyWeights).map(([key, value]) => [
+        key.replaceAll('_', ' '),
+        (value > 0 ? '+' : '') + value,
+        '',
+      ])
+    : rulebook;
+  const title = {
+    Lobby: 'Crew lobby',
+    'My squad': 'My squad',
+    Market: 'Player market',
+    'Data Lab': 'Data Lab',
+  }[tab];
+  const description = {
+    Lobby: 'Select a crewmate to inspect their points.',
+    'My squad': 'Choose your five starters, captain and vice-captain.',
+    Market: 'Recruit up to eight players with a £100m draft budget.',
+    'Data Lab': 'Review episode records and keep the results on this browser.',
+  }[tab];
+  return (
+    <>
+      <a href="#main" className="skip">
+        Skip to content
+      </a>
+      <header className="site-header">
+        <div className="shell header-inner">
+          <button className="brand" onClick={() => go('Lobby')} aria-label="Cosmic Draft lobby">
+            <span className="brand-mark">
+              <Sprite id="brand" />
+            </span>
+            <span>
+              <b>
+                <PixelWord text="Cosmic Draft" />
+              </b>
+              <small>Sidemen Among Us fantasy</small>
+            </span>
+          </button>
+          <nav aria-label="Main sections">
+            {sections.map((item, i) => (
+              <button
+                key={item}
+                aria-current={tab === item ? 'page' : undefined}
+                onClick={() => go(item)}
+              >
+                <Icon index={i} />
+                {item}
+              </button>
+            ))}
+          </nav>
+          <button className="rules-button" onClick={() => setPopup('rules')}>
+            <span aria-hidden="true">?</span> How to play
+          </button>
+        </div>
+      </header>
+      <main id="main" className="shell">
+        <div className="page-title">
+          <div>
+            <h1>
+              <PixelWord text={title} />
+            </h1>
+            <p>{description}</p>
+          </div>
+          <label className="week-select">
+            Gameweek
+            <select value={active.key} disabled={!ready} onChange={(e) => choose(e.target.value)}>
+              {weeks.map((w) => (
+                <option key={w.key} value={w.key}>
+                  {w.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {tab === 'Lobby' && (
+          <>
+            <div className="lobby-grid">
+              <Room
+                starters={roster.starters}
+                bench={bench}
+                captain={roster.captain}
+                vice={roster.vice}
+                open={openPlayer}
+              />
+              <section className="score-panel">
+                <div className="score-title">
+                  <h2>Squad score</h2>
+                  <Icon index={5} />
+                </div>
+                <div className="score-value">
+                  <PixelWord text={String(total)} />
+                  <small>pts</small>
+                </div>
+                <p className="score-caption">
+                  {demo
+                    ? 'Fictional practice points'
+                    : oldMode
+                      ? 'Legacy event points'
+                      : 'Reviewed episode points'}
+                </p>
+                <dl className="score-facts">
+                  <div className="squad-meter">
+                    <dt>Squad</dt>
+                    <dd>{roster.ids.length} / 8</dd>
+                  </div>
+                  <div className="seats-meter" aria-hidden="true">
+                    {Array.from({ length: 8 }, (_, i) => (
+                      <i key={i} className={i < roster.ids.length ? 'occupied' : undefined} />
+                    ))}
+                  </div>
+                  <div>
+                    <dt>Budget left</dt>
+                    <dd>{money(available)}</dd>
+                  </div>
+                  <div>
+                    <dt>Double points</dt>
+                    <dd>{skipper ? players.get(skipper)?.tag + ' ×2' : 'Unassigned'}</dd>
+                  </div>
+                </dl>
+                <button className="button primary" onClick={() => go('My squad')}>
+                  Edit squad <span>→</span>
+                </button>
+              </section>
+            </div>
+            <div className="lobby-bottom">
+              <section className="panel manifest">
+                <div className="panel-heading">
+                  <h2>Episode leaders</h2>
+                  <button className="link-button" onClick={() => setPopup('scores')}>
+                    All scores →
+                  </button>
+                </div>
+                {ranked.length ? (
+                  rows(ranked.slice(0, 4))
+                ) : (
+                  <p className="empty">No scored appearances in this episode.</p>
+                )}
+              </section>
+              <section className="panel quick-rules">
+                <div className="panel-heading">
+                  <h2>{oldMode ? 'Legacy points guide' : 'Points guide'}</h2>
+                  <Icon index={3} />
+                </div>
+                <dl>
+                  {guide.map(([label, value], i) => (
+                    <div key={label}>
+                      <dt>
+                        <i className={'pip ' + ['crew-pip', 'imp-pip', 'neutral-pip'][i]} />
+                        {label}
+                      </dt>
+                      <dd>+{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <button className="link-button" onClick={() => setPopup('rules')}>
+                  Read all scoring rules →
+                </button>
+              </section>
+            </div>
+          </>
+        )}
+        {tab === 'My squad' && (
+          <>
+            <div className="budget-bar">
+              <span>
+                Squad <b>{roster.ids.length}/8</b>
+              </span>
+              <span>
+                Budget left <b>{money(available)}</b>
+              </span>
+              <span>
+                Squad score <b>{total} pts</b>
+              </span>
+              <button className="link-button" onClick={() => go('Market')}>
+                Open market →
+              </button>
+            </div>
+            <div className="squad-layout">
+              <section className="panel">
+                <div className="panel-heading">
+                  <h2>Starting five</h2>
+                  <span>{roster.starters.length} / 5</span>
+                </div>
+                {manageRows(roster.starters)}
+                {roster.starters.length < 5 && (
+                  <p className="empty">
+                    Open starting seat. Start a reserve or recruit from the market.
+                  </p>
+                )}
+              </section>
+              <section className="panel">
+                <div className="panel-heading">
+                  <h2>Reserve bench</h2>
+                  <span>{bench.length} seated</span>
+                </div>
+                {manageRows(bench)}
+                {!bench.length && <p className="empty">Your reserve seats are empty.</p>}
+              </section>
+            </div>
+            <p className="footnote">
+              C earns double points. V takes over if the captain misses the whole episode.
+            </p>
+          </>
+        )}
+        {tab === 'Market' && (
+          <section className="panel market-panel">
+            <div className="market-tools">
+              <label>
+                Find a player
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Name or alias"
+                />
+              </label>
+              <label>
+                Sort by
+                <select value={sort} onChange={(e) => setSort(e.target.value as 'points' | 'price')}>
+                  <option value="points">Episode points</option>
+                  <option value="price">Draft price</option>
+                </select>
+              </label>
+              <span>
+                Budget left <b>{money(available)}</b>
+              </span>
+            </div>
+            <table className="market-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Points</th>
+                  <th>Price</th>
+                  <th>
+                    <span className="sr-only">Squad action</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {market.map((p) => (
+                  <tr key={p.id}>
+                    <td>
+                      <button className="identity" onClick={() => openPlayer(p.id)}>
+                        <Sprite id={p.id} />
+                        <span>
+                          <b>{p.name}</b>
+                          <small>{p.tag}</small>
+                        </span>
+                      </button>
+                    </td>
+                    <td>{points(p.id)}</td>
+                    <td>{money(p.price)}</td>
+                    <td>
+                      <button
+                        className={'small-button ' + (roster.ids.includes(p.id) ? '' : 'sign')}
+                        aria-label={(roster.ids.includes(p.id) ? 'Remove ' : 'Recruit ') + p.name}
+                        onClick={() => recruit(p.id)}
+                      >
+                        {roster.ids.includes(p.id) ? 'Remove' : 'Recruit'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!market.length && <p className="empty">No players match “{query}”.</p>}
+            <p className="footnote">
+              Draft prices are fictional. Points come from the selected gameweek.
+            </p>
+          </section>
+        )}
+        {tab === 'Data Lab' && (
+          <DataLab
+            episodes={library.episodes}
+            legacy={legacy}
+            open={(key) => {
+              choose(key);
+              go('Lobby');
+            }}
+            save={(draft) => {
+              const next = {
+                episodes: replaceEpisode(readLibrary().episodes, draft),
+                current: 'episode:' + draft.episode.id,
+              };
+              write(keys.weeks, next);
+              setLibrary(next);
+            }}
+            saveLegacy={(csv, video) => {
+              const records = mergeLegacy(read<GameEvent[]>(keys.events, legacy), csv);
+              write(keys.events, records);
+              setLegacy(records);
+              choose('legacy:' + video);
+            }}
+          />
+        )}
+      </main>
+      <footer className="shell site-footer">
+        <span>
+          <i className="status-light" /> Cosmic Draft
+        </span>
+        <span>Unofficial Sidemen Among Us fantasy</span>
+      </footer>
+      {notice && (
+        <div role="status" className="toast">
+          {notice}
+          <button onClick={() => setNotice('')} aria-label="Dismiss message">
+            ×
+          </button>
+        </div>
+      )}
+      {popup === 'rules' && (
+        <Dialog title={oldMode ? 'Legacy scoring' : 'How points work'} dismiss={() => setPopup(null)}>
+          <p className="help">
+            One MoreSidemen video is one gameweek. Your five starters score. The captain’s episode points
+            count twice, including a zero or negative total.
+          </p>
+          <dl className="rulebook">
+            {ruleRows.map(([label, value, note]) => (
+              <div key={label}>
+                <dt>
+                  {label}
+                  <small>{note}</small>
+                </dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+          {!oldMode && (
+            <p className="help">
+              A draw keeps round and action points. A void round gives none. Disconnected players keep
+              points earned before leaving. Task bonuses require recorded counts for every eligible
+              crewmate. Neutral and Lovers weights are provisional.
+            </p>
+          )}
+        </Dialog>
+      )}
+      {popup === 'scores' && (
+        <Dialog title="Episode scores" dismiss={() => setPopup(null)}>
+          <p className="help">{active.label}</p>
+          {ranked.length ? rows(ranked) : <p className="empty">No scored appearances.</p>}
+        </Dialog>
+      )}
+      {popup && typeof popup === 'object' && (
+        <PointsDialog
+          id={popup.player}
+          result={result}
+          episode={active.label}
+          dismiss={() => setPopup(null)}
+        />
+      )}
+    </>
+  );
 }

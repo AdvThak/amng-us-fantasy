@@ -25,4 +25,4 @@ Users draft 8 Among Us participants for £100m, choose 5 starters, a captain and
 5. Global/private leaderboards, results, and corrections.
 
 ## Demo implementation status
-The bundled prototype provides an interactive fantasy UI, pure scoring engine, manual CSV workflow and tests. It intentionally uses client localStorage, mock stats and no production authorisation. Treat this as scaffolding, not a deployed competitive league.
+The Skeld cafeteria, squad builder and market use a shared gameweek scoring ledger. Data Lab previews the Games and Game Breakdowns CSVs, records locally reviewed episodes and reads earlier event files under legacy rules. The README documents score weights, sample coverage and source corrections. Draft prices and the practice episode are fictional. Accounts, shared standings and server-enforced deadlines remain future milestones.
