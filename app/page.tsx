@@ -63,7 +63,12 @@ export default function Home() {
     [sort, setSort] = useState<'points' | 'price'>('points');
   useEffect(() => {
     function restore() {
-      setRoster(reconcileRoster(read(keys.roster, defaultRoster)));
+      const savedRoster = read(keys.roster, defaultRoster);
+      const repaired = reconcileRoster(savedRoster);
+      setRoster(repaired);
+      if (Array.isArray(savedRoster?.ids) && savedRoster.ids.some((id) => !repaired.ids.includes(id))) {
+        setNotice('Your squad was adjusted for the new market eligibility and £100m budget. Recruit replacements in Market.');
+      }
       const saved = read<GameEvent[]>(keys.events, []);
       const old = Array.isArray(saved)
         ? saved.filter(
@@ -131,11 +136,11 @@ export default function Home() {
   const { total, skipper } = lineupScore(roster, result);
   const demo = !oldMode && episode.id === demoEpisode.id;
   const market = crew
-    .filter((p) => p.eligible || roster.ids.includes(p.id))
+    .filter((p) => p.eligible && p.price !== null)
     .filter((p) => (p.name + ' ' + p.tag).toLowerCase().includes(query.trim().toLowerCase()))
     .sort(
       (a, b) =>
-        (sort === 'points' ? points(b.id) - points(a.id) : b.price - a.price) ||
+        (sort === 'points' ? points(b.id) - points(a.id) : (b.price ?? 0) - (a.price ?? 0)) ||
         a.name.localeCompare(b.name),
     );
 
@@ -168,14 +173,14 @@ export default function Home() {
       return;
     }
     if (!players.get(id)?.eligible) {
-      setNotice('No confirmed appearance in the current market window.');
+      setNotice('This player is not available in the current draft market.');
       return;
     }
     if (roster.ids.length >= 8) {
       setNotice('Your eight seats are full. Remove a player to recruit another.');
       return;
     }
-    if ((players.get(id)?.price ?? 0) > available) {
+    if ((players.get(id)?.price ?? Infinity) > available) {
       setNotice('This player costs more than your remaining budget.');
       return;
     }
@@ -530,7 +535,7 @@ export default function Home() {
                         <Sprite id={p.id} />
                         <span>
                           <b>{p.name}</b>
-                          <small>{p.tag} · {p.latestConfirmed ? 'Seen ' + p.latestConfirmed : 'Recent appearance unverified'}</small>
+                          <small>{p.tag} · Skill {p.communitySkill ?? 'unrated'} · {p.priceUncertainty} uncertainty</small>
                         </span>
                       </button>
                     </td>
@@ -551,7 +556,7 @@ export default function Home() {
             </table>
             {!market.length && <p className="empty">No players match “{query}”.</p>}
             <p className="footnote">
-              Provisional prices use community career stats and a sample of four recent episode rosters. Only confirmed recent players can be newly recruited; existing picks may be removed. Coverage: 4 of 17 complete rosters, with 2 additional partial rosters. Points come from the selected gameweek, not career totals.
+              Research-recommended prices reflect community skill rankings, appearance evidence and archived performance proxies. The 20-player market excludes vetoed players. Full-year cast coverage and fantasy scoring backtests remain incomplete. Points shown are from the selected gameweek.
             </p>
           </section>
         )}
