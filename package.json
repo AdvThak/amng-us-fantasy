@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "wrangler dev",
     "test": "node --test src/*.test.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "preview": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "next": "^15.5.0",
@@ -19,7 +21,10 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "wrangler": "^4.0.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=22"
+  }
 }

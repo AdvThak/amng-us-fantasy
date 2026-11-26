@@ -6,7 +6,7 @@ An **unofficial**, FPL-inspired, space-pixel fantasy league proof of concept. Th
 
 ## Quick start
 
-Requires Node.js 20.9+.
+Requires Node.js 22 or newer.
 
 ```bash
 npm install
@@ -56,17 +56,40 @@ Do **not** treat the local admin panel as production access control; it runs ent
 - `src/*.test.js`: Node built-in unit tests
 - `docs/PRD.md`: MVP scope
 
-## Publishing to GitHub
+## Cloudflare deployment
 
-The connected GitHub integration in this environment can commit to existing repos but **cannot create new repositories**. Create an empty repository named `sidemen-among-us-fantasy` at https://github.com/new. To push the zip contents yourself:
+This client-side MVP uses Next.js static export. The build writes the complete website to `out/`; no server runtime, API keys, database or Next.js adapter is required.
+
+### Cloudflare Workers (recommended)
+
+In the Cloudflare dashboard, open Workers & Pages, create a Worker by importing the GitHub repository `AdvThak/amng-us-fantasy`, and configure:
+
+- Production branch: `main`
+- Root directory: repository root
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
+- Node.js version: 22 (set `NODE_VERSION=22` if needed)
+
+The included `wrangler.jsonc` declares the Worker name and static assets directory. Use the same Worker name in the dashboard, or update the configuration to match the chosen name. Cloudflare supplies the deployment URL after a successful build.
+
+Alternatively, deploy manually after authenticating Wrangler:
 
 ```bash
-git init
-git branch -M main
-git add .
-git commit -m "feat: launch space-pixel fantasy MVP prototype"
-git remote add origin https://github.com/YOUR_USERNAME/sidemen-among-us-fantasy.git
-git push -u origin main
+npm install
+npx wrangler login
+npm run deploy
 ```
 
-Or enable access to that newly created repo and ask ChatGPT to commit it.
+To preview the production output locally:
+
+```bash
+npm run preview
+```
+
+### Cloudflare Pages (alternative)
+
+Create a Pages project from the same GitHub repository. Choose **Next.js (Static HTML Export)**, set production branch to `main`, build command to `npm run build`, output directory to `out`, and `NODE_VERSION=22`. No environment secrets are needed.
+
+Do not use the server-rendered Next.js preset. This prototype stores all state in each browser's localStorage; the Data Lab is not a protected admin area. Server-side features will require a separate backend or a future migration to a server-capable deployment.
+
+References: https://developers.cloudflare.com/workers/static-assets/ and https://developers.cloudflare.com/pages/framework-guides/nextjs/deploy-a-static-nextjs-site/
