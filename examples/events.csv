@@ -1,0 +1,5 @@
+id,video,round,player,type,verified,timestampSeconds,note
+sample-1,example-video-001,1,simon,appearance,true,0,FICTIONAL example only
+sample-2,example-video-001,1,simon,match_played,true,10,FICTIONAL example only
+sample-3,example-video-001,1,simon,match_win,true,900,FICTIONAL example only
+sample-4,example-video-001,1,vik,appearance,false,0,Pending review
