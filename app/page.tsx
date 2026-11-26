@@ -348,7 +348,7 @@ export default function Home() {
             </select>
           </label>
         </div>
-        {provisional && <p className="feedback" role="note">Provisional GTA 6 recap only: no confirmed round results. Unreported players and actions are unknown, not zero performance. Squad and captain totals reflect candidates only. <a href="https://www.youtube.com/watch?v=vunYsm7gV9s" target="_blank" rel="noreferrer">Watch episode ↗</a></p>}
+        {provisional && <p className="feedback" role="note">Provisional GTA 6 recap only: Game 1 crew victory reported by a secondary summary; participation candidates included, winning players not yet established. Unreported players and actions are unknown, not zero performance. Squad and captain totals reflect candidates only. <a href="https://www.youtube.com/watch?v=vunYsm7gV9s" target="_blank" rel="noreferrer">Watch episode ↗</a></p>}
         {tab === 'Lobby' && (
           <>
             <div className="lobby-grid">
