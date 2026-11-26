@@ -1,60 +1,50 @@
-# COSMIC DRAFT 🚀 · Sidemen Among Us Fantasy
+# Cosmic Draft · Sidemen Among Us fantasy
 
-An **unofficial**, FPL-inspired, space-pixel fantasy league proof of concept. This is a runnable **Next.js + TypeScript** front-end with a deterministic role-weighted scoring engine and a CSV-based manual data collection prototype.
+Draft eight players for £100m and seat five starters around the Skeld cafeteria table. Select a suit to see each award, its CSV record and the round's video link. The opening practice episode and the draft prices are fictional. Reviewed imports and squads are saved in the importing browser.
 
-> All player prices, points and example matches in the demo are **fictional placeholders**, not verified Sidemen gameplay data. Historical community data has not been imported or redistributed. Check permission before reusing anyone else's dataset.
+## Run locally
 
-## Quick start
+Use Node.js 22 or newer. Run `npm install`, then `npm run dev`. Open `http://localhost:3000`. Run `npm test`, `npm run typecheck` and `npm run build` before publishing.
 
-Requires Node.js 22 or newer.
+## Import an episode
 
-```bash
-npm install
-npm run dev
-```
+1. Open Kesh's tracker and export the **Games** and **Game Breakdowns** tabs individually as CSV. The site accepts either both full tabs or matching subsets. Include every game of any episode you intend to confirm.
+2. Open **Data Lab**, select the two files and choose **Preview import**. Select a video, check its games and inspect any coverage notes. Correct errors in the source files and preview again.
+3. Choose **Confirm complete episode**. Confirming a correction replaces the entire previous version of that video in one browser save. Switch gameweeks using the selector on any screen. The lobby shows your selected lineup's score for that episode.
 
-Visit `http://localhost:3000`.
+Games uses `Game Number`, `Video Link`, `Winner` and `Players, Roles and Tasks`. The optional `Map Name` appears with the source evidence. Game Breakdowns uses `Game Number`, `Sequence`, `Primary Player`, `Event Type` and `Secondary Player`. The importer accepts the tracker's duplicate headings, quoted multiline rosters and timestamped YouTube links. A breakdown sequence gives the action order. The video link opens the recorded start of the round.
 
-```bash
-npm test
-npm run typecheck
-npm run build
-```
+### Resolving tracker ambiguities
 
-## Built
-- Space-pixel responsive UI (no image assets required)
-- Interactive roster builder: 8 players, 5 starters, £100m budget, captains and vice captain
-- Demo player market with fictional price and performance values
-- Manual admin prototype for adding **verified** scoring events and CSV import/export
-- Deterministic, deduplicated, configurable role-weighted scoring module + unit tests
-- Client-side localStorage persistence for demo teams/events
+Use these optional columns when the source supports the correction. Put full names or known aliases in these fields. Keep unresolved episodes in preview.
 
-## Not built yet
-- Real player prices or validated historical data
-- Authentication, protected administrator routes, real server/database storage
-- Server-enforced transfer deadlines, gameweek locks and league leaderboards
-- Official video data ingestion or automated publishing
+| Tab | Column | Value |
+| --- | --- | --- |
+| Games | Player Teams | Starting alignments such as `Simon=crew\|JJ=imp\|Harry=neutral` |
+| Games | Final Teams | Confirmed ending alignments for a changed role, using the same format |
+| Games | Winner Players | All confirmed beneficiaries, separated by a vertical bar, including co-winners |
+| Game Breakdowns | Actor Team / Target Team | The alignment at this action when a participant has changed role |
+| Game Breakdowns | Opponents | `true` or `false` for an otherwise ambiguous neutral pairing |
 
-**No Gemini API, no YouTube Data API.** Episode URLs can be registered manually later.
+A conflict at the same game and sequence prevents confirmation. A repeated identical record earns points once. Guests appear in results under their names. Only priced players can be drafted. The Data Lab includes two fictional practice CSV downloads and accepts the earlier eight-column events under **Legacy event CSVs**. Legacy results retain the original event weights.
 
-## Importing events
+## Gameweek scoring
 
-Use the **Data Lab** tab to load `examples/events.csv` or add single events. Supported columns:
+| Award | Points |
+| --- | ---: |
+| Episode appearance | +3 once |
+| Non-void round played | +1 |
+| Crewmate / impostor / confirmed neutral or Lovers victory | +5 / +3 / +8 |
+| Attributed opposing elimination | +1 each, first two per player per round |
+| Crewmate body report | +1 for the player's first report per round |
+| Crewmate tasks | +1 for at least half, another +1 for all |
+| Impostor voted out | −2 once per round |
 
-`id,video,round,player,type,verified,timestampSeconds,note`
+For example, a crewmate who wins, reports twice and completes 7/7 tasks earns 9 round points. Appearance is a separate once-per-video award. Task points require valid counts for every eligible crewmate in the round. Kills and reports use explicit action records. Self-kills, friendly fire and unattributed collateral earn zero. Death or ejection preserves a side victory. Disconnected players keep earned actions, draws retain recorded actions and void rounds are excluded. Only five starters contribute to a squad total. The captain doubles their full episode total, including zero or negative points. An absent captain passes the multiplier to the vice-captain.
 
-`verified` must be `true`/`false` or `1`/`0`. Only verified events are scored. Participant IDs must match the canonical IDs in the demo for totals to appear on their cards. CSV importing merges by stable event ID, replacing earlier versions; full server-side audit history is future work.
+A balance check on 100 archived rounds with only base roles gave 3.54 points per crewmate appearance and 3.50 per impostor appearance before episode and captain bonuses. Nineteen rounds had complete task counts. Neutral and Lovers weights are provisional. Career totals are a cross-check for the underlying records. Use the episode records to calculate weekly points. [Archived breakdowns](https://github.com/Kochou11/Sidemen-amongus/blob/374e004a03744731b62dc2d3b801486e0e0ebad3/Data/MoreSidemen_Among_Us.json) · [Kesh's tracker](https://docs.google.com/spreadsheets/d/1g3Esmr1-Z5jt5_mqOv9-f9fvyFezgT_2Z-8G7w5ChSU/edit) · [SDMN round index](https://www.sdmn-stats.uk/games)
 
-Do **not** treat the local admin panel as production access control; it runs entirely in the browser.
-
-## Architecture
-
-- `app/page.tsx`: fantasy UI / local demo state
-- `app/globals.css`: space-pixel visual system
-- `src/scoring.js`: deterministic scoring engine
-- `src/import.js`: strict CSV parser and importer/exporter
-- `src/*.test.js`: Node built-in unit tests
-- `docs/PRD.md`: MVP scope
+The repository ships original practice data. Check reuse permission before redistributing a community dataset. Local CSV confirmation records the importer's review. Shared standings, accounts and server-enforced deadlines are future work.
 
 ## Cloudflare deployment
 
@@ -90,6 +80,6 @@ npm run preview
 
 Create a Pages project from the same GitHub repository. Choose **Next.js (Static HTML Export)**, set production branch to `main`, build command to `npm run build`, output directory to `out`, and `NODE_VERSION=22`. No environment secrets are needed.
 
-Do not use the server-rendered Next.js preset. This prototype stores all state in each browser's localStorage; the Data Lab is not a protected admin area. Server-side features will require a separate backend or a future migration to a server-capable deployment.
+Do not use the server-rendered Next.js preset. This prototype stores all state in each browser's localStorage; reviewed CSVs are local to the importing browser. Server-side features will require a separate backend or a future migration to a server-capable deployment.
 
 References: https://developers.cloudflare.com/workers/static-assets/ and https://developers.cloudflare.com/pages/framework-guides/nextjs/deploy-a-static-nextjs-site/
