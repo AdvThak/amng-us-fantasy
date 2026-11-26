@@ -1,6 +1,6 @@
 # Cosmic Draft · Sidemen Among Us fantasy
 
-Draft eight players for £100m and seat five starters around the Skeld cafeteria table. Select a suit to see each award, its CSV record and the round's video link. The opening practice episode is fictional. Draft prices are provisional estimates derived from community statistics and a partially verified recent episode catalog. Reviewed imports and squads are saved in the importing browser.
+Draft eight players for £100m and seat five starters around the Skeld cafeteria table. Select a suit to see each award, its CSV record and the round's video link. The opening practice episode is fictional. Draft prices use the research-recommended community skill–weighted price table and partially verified recent appearance evidence. Reviewed imports and squads are saved in the importing browser.
 
 ## Run locally
 
@@ -26,7 +26,7 @@ Use these optional columns when the source supports the correction. Put full nam
 | Game Breakdowns | Actor Team / Target Team | The alignment at this action when a participant has changed role |
 | Game Breakdowns | Opponents | `true` or `false` for an otherwise ambiguous neutral pairing |
 
-A conflict at the same game and sequence prevents confirmation. A repeated identical record earns points once. Guests appear in results under their names. Only players with a sourced recent appearance can be newly drafted; existing historical picks may still be removed. The Data Lab includes two fictional practice CSV downloads and accepts the earlier eight-column events under **Legacy event CSVs**. Legacy results retain the original event weights.
+A conflict at the same game and sequence prevents confirmation. A repeated identical record earns points once. Guests appear in results under their names. Only eligible, priced players can be drafted. KSI and Ellum are vetoed; both remain resolvable in historical scores. Existing squads are reconciled against new eligibility and prices on load, with vacancies left for the manager to refill. The Data Lab includes two fictional practice CSV downloads and accepts the earlier eight-column events under **Legacy event CSVs**. Legacy results retain the original event weights.
 
 ## Gameweek scoring
 

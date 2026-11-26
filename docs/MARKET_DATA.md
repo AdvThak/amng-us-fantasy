@@ -1,21 +1,47 @@
-# Market data — 27 November 2026
+# Market data — community skill–weighted snapshot (27 November 2026)
 
-Scope: original MoreSidemen Among Us gameplay videos published 27 November 2025–27 November 2026 inclusive. Compilations and IRL videos are excluded. TheTVDB lists 14 gameplay releases in 2026 plus three in December 2025. Dates and abbreviated titles are used for episode reconciliation, not as proof of cast.
+Scope: original MoreSidemen gameplay videos in 27 November 2025–27 November 2026, excluding IRL and compilations. The 20 eligible players use existing canonical IDs. KSI (JJ) and Ellum are explicit owner vetoes, retain historical IDs/records, and have no draft price. Other historical players remain inactive pending dated appearance evidence.
 
-## Sources
+## Source evidence
 
-- [Original tracker by thekesh12](https://docs.google.com/spreadsheets/d/1g3Esmr1-Z5jt5_mqOv9-f9fvyFezgT_2Z-8G7w5ChSU/edit) ([creator's Reddit post](https://www.reddit.com/r/Sidemen/comments/1flz5hp/moresidemen_among_us_stats_this_took_me_months_to/)). Spreadsheet not directly accessible in this research session. Do not redistribute full tabs without checking permission.
-- [Sidemen Wiki — Among Us](https://sidemen.fandom.com/wiki/Among_Us): historical episode appearances and four listed recent casts. Community content CC-BY-SA unless otherwise noted. The source's latest-appearance table is incomplete and its Dec 9 roster repeats Calfreezy; deduplicated. Its February 17 date differs from the February 16 official upload; use the upload date. The four roster lists are factual records, attributed here; no wiki prose copied.
-- [SDMN Stats — Player statistics](https://www.sdmn-stats.uk/players): small subset of archived aggregate numeric facts (rounds and wins), not a bulk dataset copy. Snapshot may predate the recent episode list; counts are NOT current-year totals. Small sample and data quality issues exist. Unknown counts are null.
-- [TheTVDB 2026 episode list](https://www.thetvdb.com/series/sidemen-among-us/seasons/official/2026): candidate coverage checklist. This catalog is community-maintained and may miss uploads or use alternate titles.
-- [May 9 reaction transcript](https://www.cockatoo.com/content/miniminter-reacts-to-sidemen-among-us-15-man-special-ultra-chaos-mode) and [Nov 2 recap](https://trari.com/en/story/moresidemen-25182/): partial positive appearance evidence only, not complete rosters.
+- [Sidemen Wiki](https://sidemen.fandom.com/wiki/Among_Us) and [episode index](https://thetvdb.com/series/sidemen-among-us/allseasons/official): original episode inventory and published casts; incomplete.
+- [February 16 upload](https://www.youtube.com/watch?v=w50J1jWfC2o) and [AB discussion](https://www.reddit.com/r/Sidemen/comments/1r6j00f/finally_new_among_us/): AB is independently discussed in gameplay despite being missing from the wiki cast. Downgraded the February roster to partial evidence instead of counting an absence.
+- [November 2 recap](https://trari.com/en/story/moresidemen-25182/): dated upload's positive cast evidence for LazarBeam, Harry, Chipfat, Tobi, Danny Aarons, Simon, Ethan, Lachlan, George Clarkey and Josh. The report treats Chipfat as Chip; confirm this alias against the tracker before importing contradictory events.
+- [Viz's August 18 return video](https://www.youtube.com/watch?v=KBDQTXZQIAs) and [October 4 episode discussion](https://www.reddit.com/r/Sidemen/comments/1wxfaig/bro_that_head_was_getting_mad_viz_another_fav/): verify his return, but dates are evidence publication dates, not necessarily exact MoreSidemen upload dates.
+- [August 18 gameplay tier analysis](https://www.reddit.com/r/Sidemen/comments/1vraybu/sidemen_among_us_tier_list_with_comments/), [May 10 ranking](https://www.reddit.com/r/Sidemen/comments/1t978vn/new_among_us_ranking/), [January role poll](https://www.reddit.com/r/Sidemen/comments/1q2vueo/tobi_wins_who_is_a_good_crewmate_and_an_elite/), [January role discussion](https://www.reddit.com/r/Sidemen/comments/1q94287/behz_and_harry_have_been_swapped_lachlan_has_also/): qualitative skill opinions, not popularity rankings or statistically representative polling. Tobi's ranking is disputed. TierMaker aggregate images could not be mapped reliably to names and were not used for scores.
+- [SDMN Stats](https://www.sdmn-stats.uk/players), [round records](https://www.sdmn-stats.uk/games), [original Kesh tracker](https://docs.google.com/spreadsheets/d/1g3Esmr1-Z5jt5_mqOv9-f9fvyFezgT_2Z-8G7w5ChSU/edit): historical performance proxies; archived counts are not current-year counts or verified fantasy points. No full community dataset mirrored.
 
 ## Coverage
 
-4 of 17 candidate episodes have a complete published roster; 2 others have partial evidence, 11 remain unreviewed. The 13 incomplete episodes are listed in `src/market-data.js`. Missing records are not proof that a guest was absent. No full round-level dataset has been redistributed or auto-published; existing Data Lab CSV import is the supported path for reviewed results. Market includes 19 confirmed players (7 original Sidemen and 12 guests). Historical players remain resolvable for scoring and existing squads but are not offered for new recruitment until verified.
+The prior 17-episode checklist is retained as a candidate list, not an exhaustive audited catalog. Three earlier published rosters are classified as complete, 14 candidate rosters remain incomplete (three of those have partial cast evidence). Viz's evidence is tracked separately without asserting an exact episode date. Missing appearances do not establish absence. Only positive dated evidence plus a price recommendation grants eligibility; vetoes override both.
 
 ## Pricing
 
-All catalog entries have a provisional positive price (floor £4.5m, cap £18m, increments £0.5m). Formula: 4.5 + 7 × min(1, career episode count / 123) + 2.5 × (appearances in the four complete rosters / 4) + 10 × (smoothed career round win rate − 0.45). Win-rate prior: 9 wins in 20 rounds. Partial cast evidence qualifies a player, but does not count toward the rate. This is a transparent reliability/skill heuristic, not a statistically optimized or role-normalized fantasy price. It is intentionally conservative for guests with small or missing samples. Recalibrate on verified full-window round-level fantasy scoring, including out-of-sample backtesting; use expected points per eligible video rather than career wins when available. Prices do not affect episode scoring. An existing over-budget roster is reconciled by the existing budget enforcement on load.
+The research recommends 45% community gameplay skill, 30% recent availability and 25% gameplay-performance proxy. It does not supply fitted numeric scores per component, reliable full-window appearance probabilities, or role-adjusted fantasy returns. Therefore the code ships the report's explicit price recommendations, not a fabricated computed weighted score. Qualitative tier, appearance assessment and uncertainty are stored alongside the price. The old formula is superseded. All inactive players have null prices; no zero-price recruits.
 
-No Gemini, YouTube Data API, runtime scraper or API key is required. No source biography text or full proprietary dataset copied. Review source terms and obtain permission before mirroring complete sheets.
+| Player | Price (£m) | Skill | Availability assessment | Uncertainty |
+|---|---:|---|---|---|
+| Miniminter | 19.0 | S | high | low |
+| LazarBeam | 18.0 | S | high/recent | low |
+| Vikkstar123 | 16.5 | A | high | low |
+| VizuaLizah | 15.5 | S/A | medium | medium |
+| TBJZL | 15.0 | A/B (disputed) | high | medium |
+| Zerkaa | 13.5 | B | high | low |
+| Deji | 13.5 | B (improving) | medium-high | medium |
+| W2S | 13.0 | C/B | high | medium |
+| Behzinga | 12.5 | C/B | high | medium |
+| Danny Aarons | 11.0 | C | medium-high | medium |
+| AB | 10.5 | C | medium | high |
+| George Clarkey | 10.0 | C | medium | medium |
+| Lachlan | 9.5 | D/C | medium-high | medium |
+| Calfreezy | 9.0 | C | medium | medium |
+| JackSucksAtLife | 8.5 | C | low-medium | high |
+| Ninja | 8.5 | Unrated | low | high |
+| CouRageJD | 8.0 | Unrated | low | high |
+| TheBurntChip | 7.5 | F/D | medium | medium |
+| Louu | 7.0 | Unrated | low | high |
+| TheBurntPeanut | 6.5 | Unrated | low | very high |
+
+Eight-player budget £100m, five starters. Highest five cost £84m; cheapest three cost £21m, total £105m (ineligible). New default eight costs £98m. Existing squads retain valid selections in original order until budget is reached; ineligible players are removed and captaincy repaired. Vacancies are not silently auto-filled. This is a reviewable initial price schedule, not a calibrated predictive model. Future repricing should use verified round-level scores, recency-weighted skill consensus, and out-of-sample fantasy backtesting.
+
+No external runtime API dependencies; no Gemini or YouTube Data API.

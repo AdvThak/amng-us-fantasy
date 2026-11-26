@@ -327,7 +327,9 @@ export const completeRosters = [
       "guest-theburntpeanut"
     ],
     "source": "https://sidemen.fandom.com/wiki/Among_Us"
-  },
+  }
+];
+export const partialRosters = [
   {
     "date": "2026-02-16",
     "title": "Among Us is back",
@@ -342,13 +344,14 @@ export const completeRosters = [
       "guest-dannyaarons",
       "guest-courage",
       "guest-chip",
-      "guest-georgeclarkey"
+      "guest-georgeclarkey",
+      "guest-ab"
     ],
     "source": "https://sidemen.fandom.com/wiki/Among_Us",
-    "video": "https://www.youtube.com/watch?v=w50J1jWfC2o"
-  }
-];
-export const partialRosters = [
+    "video": "https://www.youtube.com/watch?v=w50J1jWfC2o",
+    "additionalSource": "https://www.reddit.com/r/Sidemen/comments/1r6j00f/finally_new_among_us/",
+    "note": "Wiki roster and independent AB appearance evidence disagree; union is positive evidence only, not a complete cast."
+  },
   {
     "date": "2026-05-09",
     "ids": [
@@ -363,12 +366,26 @@ export const partialRosters = [
   {
     "date": "2026-11-02",
     "ids": [
-      "lazar"
+      "lazar",
+      "harry",
+      "guest-chip",
+      "tobi",
+      "guest-dannyaarons",
+      "simon",
+      "ethan",
+      "guest-lachlan",
+      "guest-georgeclarkey",
+      "josh"
     ],
-    "source": "https://trari.com/en/story/moresidemen-25182/"
+    "source": "https://trari.com/en/story/moresidemen-25182/",
+    "note": "Recap names these participants; Chipfat is treated as Chip's alias per research. Not assumed to be complete."
   }
 ];
 export const uncheckedEpisodes = [
+  [
+    "2026-02-16",
+    "Among Us is back (conflicting cast sources)"
+  ],
   [
     "2026-03-21",
     "Explosive episode"
@@ -422,29 +439,199 @@ export const uncheckedEpisodes = [
     "GTA 6 edition"
   ]
 ];
-// Prices are estimates of draft value, not official valuations or observed fantasy scores.
-// Smooth win rates toward 45% with 20 rounds of prior evidence. Use career appearances as
-// a reliability proxy and the four fully observed recent rosters as a small-sample adjustment.
-// Partial rosters establish eligibility but do not count as absences or enter the denominator.
-export function marketPrice(careerAppearances, rounds, wins, recentCount, reviewedCount) {
-  const winRate = (Number(wins ?? 0) + 9) / (Number(rounds ?? 0) + 20);
-  const historical = Math.min(1, Math.max(0, careerAppearances / 123));
-  const recent = reviewedCount ? recentCount / reviewedCount : 0;
-  const estimate = 4.5 + 7 * historical + 2.5 * recent + 10 * (winRate - 0.45);
-  return Math.max(4.5, Math.min(18, Math.round(estimate * 2) / 2));
-}
+// Dated positive evidence without a verified exact episode upload date.
+export const individualAppearanceEvidence = [
+  {
+    "id": "guest-viz",
+    "date": "2026-08-18",
+    "source": "https://www.youtube.com/watch?v=KBDQTXZQIAs",
+    "note": "Creator's return video publication date, not the exact MoreSidemen upload date."
+  },
+  {
+    "id": "guest-viz",
+    "date": "2026-10-04",
+    "source": "https://www.reddit.com/r/Sidemen/comments/1wxfaig/bro_that_head_was_getting_mad_viz_another_fav/",
+    "note": "Date of discussion about the head-grows-and-explodes episode, not the exact upload date."
+  }
+];
+export const rankingSources = {
+  "tierList": "https://www.reddit.com/r/Sidemen/comments/1vraybu/sidemen_among_us_tier_list_with_comments/",
+  "mayRanking": "https://www.reddit.com/r/Sidemen/comments/1t978vn/new_among_us_ranking/",
+  "rolePoll": "https://www.reddit.com/r/Sidemen/comments/1q2vueo/tobi_wins_who_is_a_good_crewmate_and_an_elite/",
+  "roleDiscussion": "https://www.reddit.com/r/Sidemen/comments/1q94287/behz_and_harry_have_been_swapped_lachlan_has_also/",
+  "febDiscussion": "https://www.reddit.com/r/Sidemen/comments/1r6j00f/finally_new_among_us/"
+};
+export const vetoedIds = new Set(['jj', 'ellum']);
+// The research report's proposed weights are design guidance, not a fitted model.
+export const pricingWeights = { communitySkill: 0.45, appearance: 0.30, performanceProxy: 0.25 };
+// Explicit, reviewable research recommendations (not calculated fantasy points).
+// [canonical ID, price in millions, community skill tier, appearance assessment, uncertainty]
+export const priceRecommendations = [
+  [
+    "simon",
+    19,
+    "S",
+    "high",
+    "low"
+  ],
+  [
+    "lazar",
+    18,
+    "S",
+    "high/recent",
+    "low"
+  ],
+  [
+    "vik",
+    16.5,
+    "A",
+    "high",
+    "low"
+  ],
+  [
+    "guest-viz",
+    15.5,
+    "S/A",
+    "medium",
+    "medium"
+  ],
+  [
+    "tobi",
+    15,
+    "A/B (disputed)",
+    "high",
+    "medium"
+  ],
+  [
+    "josh",
+    13.5,
+    "B",
+    "high",
+    "low"
+  ],
+  [
+    "deji",
+    13.5,
+    "B (improving)",
+    "medium-high",
+    "medium"
+  ],
+  [
+    "harry",
+    13,
+    "C/B",
+    "high",
+    "medium"
+  ],
+  [
+    "ethan",
+    12.5,
+    "C/B",
+    "high",
+    "medium"
+  ],
+  [
+    "guest-dannyaarons",
+    11,
+    "C",
+    "medium-high",
+    "medium"
+  ],
+  [
+    "guest-ab",
+    10.5,
+    "C",
+    "medium",
+    "high"
+  ],
+  [
+    "guest-georgeclarkey",
+    10,
+    "C",
+    "medium",
+    "medium"
+  ],
+  [
+    "guest-lachlan",
+    9.5,
+    "D/C",
+    "medium-high",
+    "medium"
+  ],
+  [
+    "guest-calfreezy",
+    9,
+    "C",
+    "medium",
+    "medium"
+  ],
+  [
+    "guest-jacksucksatlife",
+    8.5,
+    "C",
+    "low-medium",
+    "high"
+  ],
+  [
+    "guest-ninja",
+    8.5,
+    null,
+    "low",
+    "high"
+  ],
+  [
+    "guest-courage",
+    8,
+    null,
+    "low",
+    "high"
+  ],
+  [
+    "guest-chip",
+    7.5,
+    "F/D",
+    "medium",
+    "medium"
+  ],
+  [
+    "guest-louu",
+    7,
+    null,
+    "low",
+    "high"
+  ],
+  [
+    "guest-theburntpeanut",
+    6.5,
+    null,
+    "low",
+    "very high"
+  ]
+];
+const priceById = new Map(priceRecommendations.map(([id, price, skill, appearance, uncertainty]) => [
+  String(id), { price: Number(price), communitySkill: skill == null ? null : String(skill), appearance: String(appearance), uncertainty: String(uncertainty) },
+]));
 export function marketRecord(row) {
   const [id, name, tag, appearances, rounds, wins] = row;
   const recent = completeRosters.filter((e) => e.ids.includes(id));
   const partial = partialRosters.filter((e) => e.ids.includes(id));
+  const individual = individualAppearanceEvidence.filter((e) => e.id === id);
   const latest = [...recent, ...partial].map((e) => e.date).sort().at(-1) ?? null;
+  const latestEvidenceDate = [...recent, ...partial, ...individual].map((e) => e.date).sort().at(-1) ?? null;
+  const recommendation = priceById.get(String(id));
+  const vetoed = vetoedIds.has(String(id));
+  const eligible = !vetoed && latestEvidenceDate !== null && recommendation !== undefined;
   return {
     id: String(id), name: String(name), tag: String(tag),
     careerAppearances: Number(appearances),
     rounds: rounds == null ? null : Number(rounds),
     wins: wins == null ? null : Number(wins),
     recentCount: recent.length, reviewedCount: completeRosters.length,
-    latestConfirmed: latest, eligible: latest !== null,
-    price: marketPrice(Number(appearances), rounds, wins, recent.length, completeRosters.length),
+    latestConfirmed: latest, latestEvidenceDate, eligible, vetoed,
+    exclusionReason: vetoed ? 'owner_veto' : eligible ? null : 'recent_appearance_unverified',
+    price: eligible ? recommendation?.price ?? null : null,
+    communitySkill: recommendation?.communitySkill ?? null,
+    appearanceAssessment: recommendation?.appearance ?? null,
+    priceUncertainty: recommendation?.uncertainty ?? null,
   };
 }
