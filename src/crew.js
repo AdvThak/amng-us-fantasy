@@ -1,25 +1,10 @@
-// Prices belong to the fictional draft market. Sprite indexes are stable across screens.
-export const crew = [
-  ['simon', 'Miniminter', 'Simon', 18.5],
-  ['vik', 'Vikkstar123', 'Vik', 16.5],
-  ['harry', 'W2S', 'Harry', 14.5],
-  ['josh', 'Zerkaa', 'Josh', 12.5],
-  ['ethan', 'Behzinga', 'Ethan', 11],
-  ['jj', 'KSI', 'JJ', 10],
-  ['tobi', 'TBJZL', 'Tobi', 8.5],
-  ['randolph', 'Randolph', 'Randy', 7],
-  ['lazar', 'LazarBeam', 'Lazar', 13],
-  ['deji', 'Deji', 'Deji', 8],
-  ['ginge', 'AngryGinge', 'Ginge', 9],
-  ['ellum', 'Ellum', 'Ellum', 6],
-].map(([id, name, tag, price], sprite) => ({
-  id: String(id),
-  name: String(name),
-  tag: String(tag),
-  price: Number(price),
-  sprite,
-}));
+import { careerRows, marketRecord } from './market-data.js';
 
+// Preserve the original 12 sprite indices. New players use the generic sprite (13).
+export const crew = careerRows.map((row, index) => ({
+  ...marketRecord(row),
+  sprite: index < 12 ? index : 13,
+}));
 export const players = new Map(crew.map((p) => [p.id, p]));
 const normal = (name) =>
   String(name)
@@ -31,6 +16,15 @@ const aliases = new Map(crew.flatMap((p) => [p.id, p.name, p.tag].map((n) => [no
 aliases.set('vikk', 'vik');
 aliases.set('vikkstar', 'vik');
 aliases.set('wroetoshaw', 'harry');
+aliases.set('theangryginge', 'ginge');
+aliases.set('couraged', 'guest-courage');
+aliases.set('burntchip', 'guest-chip');
+aliases.set('theburntchip', 'guest-chip');
+aliases.set('lou', 'guest-louu');
+aliases.set('burntpeanut', 'guest-theburntpeanut');
+aliases.set('alfiebuttle', 'guest-ab');
+aliases.set('georgeclarke', 'guest-georgeclarkey');
+aliases.set('dannyaarons', 'guest-dannyaarons');
 export function playerId(name) {
   const key = normal(name);
   if (!key) return '';
@@ -38,7 +32,7 @@ export function playerId(name) {
 }
 
 export const defaultRoster = {
-  ids: crew.slice(0, 8).map((p) => p.id),
+  ids: ['simon', 'vik', 'harry', 'josh', 'ethan', 'jj', 'tobi', 'guest-ab'],
   starters: crew.slice(0, 5).map((p) => p.id),
   captain: 'simon',
   vice: 'vik',

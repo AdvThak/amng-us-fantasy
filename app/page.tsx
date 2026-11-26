@@ -131,6 +131,7 @@ export default function Home() {
   const { total, skipper } = lineupScore(roster, result);
   const demo = !oldMode && episode.id === demoEpisode.id;
   const market = crew
+    .filter((p) => p.eligible || roster.ids.includes(p.id))
     .filter((p) => (p.name + ' ' + p.tag).toLowerCase().includes(query.trim().toLowerCase()))
     .sort(
       (a, b) =>
@@ -164,6 +165,10 @@ export default function Home() {
   function recruit(id: string) {
     if (roster.ids.includes(id)) {
       saveRoster({ ...roster, ids: roster.ids.filter((x) => x !== id) });
+      return;
+    }
+    if (!players.get(id)?.eligible) {
+      setNotice('No confirmed appearance in the current market window.');
       return;
     }
     if (roster.ids.length >= 8) {
@@ -510,7 +515,7 @@ export default function Home() {
               <thead>
                 <tr>
                   <th>Player</th>
-                  <th>Points</th>
+                  <th>GW pts</th>
                   <th>Price</th>
                   <th>
                     <span className="sr-only">Squad action</span>
@@ -525,7 +530,7 @@ export default function Home() {
                         <Sprite id={p.id} />
                         <span>
                           <b>{p.name}</b>
-                          <small>{p.tag}</small>
+                          <small>{p.tag} · {p.latestConfirmed ? 'Seen ' + p.latestConfirmed : 'Recent appearance unverified'}</small>
                         </span>
                       </button>
                     </td>
@@ -546,7 +551,7 @@ export default function Home() {
             </table>
             {!market.length && <p className="empty">No players match “{query}”.</p>}
             <p className="footnote">
-              Draft prices are fictional. Points come from the selected gameweek.
+              Provisional prices use community career stats and a sample of four recent episode rosters. Only confirmed recent players can be newly recruited; existing picks may be removed. Coverage: 4 of 17 complete rosters, with 2 additional partial rosters. Points come from the selected gameweek, not career totals.
             </p>
           </section>
         )}

@@ -1,6 +1,6 @@
 # Cosmic Draft · Sidemen Among Us fantasy
 
-Draft eight players for £100m and seat five starters around the Skeld cafeteria table. Select a suit to see each award, its CSV record and the round's video link. The opening practice episode and the draft prices are fictional. Reviewed imports and squads are saved in the importing browser.
+Draft eight players for £100m and seat five starters around the Skeld cafeteria table. Select a suit to see each award, its CSV record and the round's video link. The opening practice episode is fictional. Draft prices are provisional estimates derived from community statistics and a partially verified recent episode catalog. Reviewed imports and squads are saved in the importing browser.
 
 ## Run locally
 
@@ -26,7 +26,7 @@ Use these optional columns when the source supports the correction. Put full nam
 | Game Breakdowns | Actor Team / Target Team | The alignment at this action when a participant has changed role |
 | Game Breakdowns | Opponents | `true` or `false` for an otherwise ambiguous neutral pairing |
 
-A conflict at the same game and sequence prevents confirmation. A repeated identical record earns points once. Guests appear in results under their names. Only priced players can be drafted. The Data Lab includes two fictional practice CSV downloads and accepts the earlier eight-column events under **Legacy event CSVs**. Legacy results retain the original event weights.
+A conflict at the same game and sequence prevents confirmation. A repeated identical record earns points once. Guests appear in results under their names. Only players with a sourced recent appearance can be newly drafted; existing historical picks may still be removed. The Data Lab includes two fictional practice CSV downloads and accepts the earlier eight-column events under **Legacy event CSVs**. Legacy results retain the original event weights.
 
 ## Gameweek scoring
 
@@ -83,3 +83,7 @@ Create a Pages project from the same GitHub repository. Choose **Next.js (Static
 Do not use the server-rendered Next.js preset. This prototype stores all state in each browser's localStorage; reviewed CSVs are local to the importing browser. Server-side features will require a separate backend or a future migration to a server-capable deployment.
 
 References: https://developers.cloudflare.com/workers/static-assets/ and https://developers.cloudflare.com/pages/framework-guides/nextjs/deploy-a-static-nextjs-site/
+
+## Community market snapshot
+
+See [market research and pricing](docs/MARKET_DATA.md). This is a partial snapshot, not an assertion that every guest in the 12-month window has been found. The scoring engine still requires reviewed round-level imports; career totals are not gameweek points.
